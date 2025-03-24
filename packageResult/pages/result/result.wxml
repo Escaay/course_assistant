@@ -54,19 +54,21 @@
   
   <!-- 底部操作按钮 -->
   <view class="action-buttons">
-    <custom-button 
-      type="primary" 
-      size="medium" 
+    <button 
+      class="action-button primary"
       bindtap="copyContent"
-      icon="copy"
-    >复制内容</custom-button>
+    >
+      <view class="button-icon copy-icon"></view>
+      <text>复制内容</text>
+    </button>
     
-    <custom-button 
-      type="default" 
-      size="medium" 
+    <button 
+      class="action-button default"
       bindtap="saveToFile"
-      icon="save"
-    >保存文件</custom-button>
+    >
+      <view class="button-icon save-icon"></view>
+      <text>保存文件</text>
+    </button>
   </view>
 
   <!-- 思维导图标签页 -->

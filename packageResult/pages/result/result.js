@@ -253,8 +253,11 @@ Page({
     }
     
     try {
+      // 处理 echarts 代码块，确保它们完整
+      const processedContent = this.processEchartsBlocks(content);
+      
       // 使用 towxml 解析 markdown
-      let article = towxml(content, 'markdown', {
+      let article = towxml(processedContent, 'markdown', {
         theme: 'light',
         events: {
           tap: (e) => {
@@ -292,6 +295,70 @@ Page({
     }
   },
   
+  // 处理 echarts 代码块，确保它们完整
+  processEchartsBlocks(content) {
+    if (!content) return content;
+    
+    // 存储处理后的内容
+    let processedContent = '';
+    // 标记是否在 echarts 代码块内
+    let inEchartsBlock = false;
+    // 存储当前的 echarts 代码块内容
+    let currentEchartsBlock = '';
+    // 存储 echarts 代码块的开始标记
+    let echartsStartMarker = '';
+    
+    // 按行处理内容
+    const lines = content.split('\n');
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      
+      // 检查是否是 echarts 代码块的开始
+      if (line.trim().startsWith('```echarts')) {
+        inEchartsBlock = true;
+        echartsStartMarker = line;
+        currentEchartsBlock = '';
+        continue;
+      }
+      
+      // 检查是否是代码块的结束
+      if (inEchartsBlock && line.trim() === '```') {
+        inEchartsBlock = false;
+        
+        // 尝试解析 JSON 以验证完整性
+        try {
+          const jsonContent = currentEchartsBlock.trim();
+          JSON.parse(jsonContent);
+          
+          // JSON 有效，添加完整的 echarts 代码块
+          processedContent += echartsStartMarker + '\n' + currentEchartsBlock + '\n```\n';
+        } catch (error) {
+          console.error('echarts JSON 解析失败，跳过此代码块:', error);
+          // JSON 无效，添加注释说明
+          processedContent += '> *图表数据正在加载中...*\n\n';
+        }
+        
+        continue;
+      }
+      
+      // 如果在 echarts 代码块内，收集内容
+      if (inEchartsBlock) {
+        currentEchartsBlock += line + '\n';
+      } else {
+        // 不在 echarts 代码块内，直接添加到处理后的内容
+        processedContent += line + '\n';
+      }
+    }
+    
+    // 处理可能未闭合的 echarts 代码块
+    if (inEchartsBlock) {
+      processedContent += '> *图表数据正在加载中...*\n\n';
+    }
+    
+    return processedContent;
+  },
+  
   // 生成思维导图数据
   generateMindMapData(markdownContent) {
     console.log('开始生成思维导图数据');
@@ -311,31 +378,32 @@ Page({
       let rootNode = null;
       let currentHeadings = []; // 存储当前的标题节点
       let currentLevel = 0;
-      let paragraphs = []; // 存储当前段落的文本内容
-      let nodeId = 0; // 用于生成唯一ID
+      let inCodeBlock = false; // 标记是否在代码块内
+      let inTable = false; // 标记是否在表格内
+      let tableContent = []; // 存储表格内容
+      let paragraphBuffer = []; // 存储段落文本
       
       // 创建一个新节点
       const createNode = (text) => {
-        nodeId++;
         return {
-          id: text, // 使用文本作为节点ID
+          id: text,
           children: []
         };
       };
       
-      // 处理段落文本，将其添加为当前标题的子节点
-      const processParagraphs = () => {
-        if (paragraphs.length > 0 && currentHeadings.length > 0) {
-          const paragraphText = paragraphs.join(' ').trim();
+      // 处理段落缓冲区
+      const processParagraphBuffer = () => {
+        if (paragraphBuffer.length > 0 && currentHeadings.length > 0) {
+          const paragraphText = paragraphBuffer.join(' ').trim();
           if (paragraphText) {
-            // 将长段落分割成多个短段落，每个段落不超过100个字符
+            // 将长段落分割成多个短段落
             const maxLength = 100;
             let remainingText = paragraphText;
             
             while (remainingText.length > 0) {
               let chunkLength = Math.min(maxLength, remainingText.length);
               
-              // 如果不是在句子结尾处截断，尝试找到最近的句子结束标记
+              // 尝试在句子结束处截断
               if (chunkLength < remainingText.length) {
                 const possibleEndPoints = ['.', '!', '?', '。', '！', '？', '；', ';'];
                 let lastEndPoint = -1;
@@ -346,7 +414,6 @@ Page({
                   }
                 }
                 
-                // 如果找到了句子结束标记，在该位置截断
                 if (lastEndPoint !== -1) {
                   chunkLength = lastEndPoint + 1;
                 }
@@ -361,7 +428,37 @@ Page({
               remainingText = remainingText.substring(chunkLength).trim();
             }
           }
-          paragraphs = []; // 清空段落缓存
+          paragraphBuffer = []; // 清空段落缓冲区
+        }
+      };
+      
+      // 处理表格内容
+      const processTable = () => {
+        if (tableContent.length > 0 && currentHeadings.length > 0) {
+          // 提取表格标题行
+          const headerRow = tableContent[0].trim().replace(/^\||\|$/g, '').split('|').map(cell => cell.trim());
+          
+          // 创建表格节点
+          const tableNode = createNode('表格数据');
+          
+          // 为表格的每一列创建子节点
+          for (let i = 0; i < headerRow.length; i++) {
+            const columnNode = createNode(headerRow[i]);
+            
+            // 添加该列的数据
+            for (let j = 2; j < tableContent.length; j++) { // 跳过标题行和分隔行
+              const row = tableContent[j].trim().replace(/^\||\|$/g, '').split('|').map(cell => cell.trim());
+              if (row.length > i) {
+                const cellNode = createNode(row[i]);
+                columnNode.children.push(cellNode);
+              }
+            }
+            
+            tableNode.children.push(columnNode);
+          }
+          
+          currentHeadings[currentHeadings.length - 1].children.push(tableNode);
+          tableContent = []; // 清空表格内容
         }
       };
       
@@ -369,17 +466,107 @@ Page({
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
         
-        // 跳过空行，但处理之前累积的段落
-        if (!line) {
-          processParagraphs();
+        // 处理代码块
+        if (line.startsWith('```')) {
+          if (!inCodeBlock) {
+            // 开始代码块
+            inCodeBlock = true;
+            processParagraphBuffer(); // 处理之前的段落
+            
+            // 检查是否是 mermaid 图表
+            const isMermaid = line.includes('mermaid');
+            const isEcharts = line.includes('echarts');
+            
+            // 收集代码块内容
+            let codeContent = [];
+            i++;
+            
+            while (i < lines.length && !lines[i].trim().startsWith('```')) {
+              codeContent.push(lines[i]);
+              i++;
+            }
+            
+            // 创建代码块节点
+            if (codeContent.length > 0 && currentHeadings.length > 0) {
+              let nodeLabel = '代码';
+              
+              // 根据代码块类型设置标签
+              if (isMermaid) {
+                nodeLabel = '图表';
+                const firstLine = codeContent[0].trim();
+                if (firstLine.includes('pie')) {
+                  nodeLabel = '饼图';
+                } else if (firstLine.includes('graph')) {
+                  nodeLabel = '流程图';
+                }
+              } else if (isEcharts) {
+                nodeLabel = 'ECharts图表';
+                try {
+                  const jsonContent = codeContent.join('\n');
+                  const chartData = JSON.parse(jsonContent);
+                  if (chartData.option && chartData.option.series) {
+                    const series = chartData.option.series;
+                    if (Array.isArray(series) && series.length > 0) {
+                      if (series[0].type === 'pie') {
+                        nodeLabel = '饼图';
+                      } else if (series[0].type === 'bar') {
+                        nodeLabel = '柱状图';
+                      } else if (series[0].type === 'line') {
+                        nodeLabel = '折线图';
+                      } else if (series[0].type === 'radar') {
+                        nodeLabel = '雷达图';
+                      }
+                    }
+                  }
+                } catch (e) {
+                  console.error('解析ECharts数据失败:', e);
+                }
+              }
+              
+              const codeNode = createNode(nodeLabel);
+              currentHeadings[currentHeadings.length - 1].children.push(codeNode);
+            }
+            
+            inCodeBlock = false; // 结束代码块
+          } else {
+            // 结束代码块
+            inCodeBlock = false;
+          }
+          continue;
+        }
+        
+        // 如果在代码块内，跳过处理
+        if (inCodeBlock) {
+          continue;
+        }
+        
+        // 处理表格
+        if (line.startsWith('|')) {
+          if (!inTable) {
+            // 开始新表格
+            inTable = true;
+            processParagraphBuffer(); // 处理之前的段落
+          }
+          
+          tableContent.push(line);
+          continue;
+        } else if (inTable) {
+          // 结束表格
+          inTable = false;
+          processTable();
+        }
+        
+        // 跳过分隔线
+        if (line.match(/^-{3,}$/) || line.match(/^\*{3,}$/) || line.match(/^_{3,}$/)) {
+          processParagraphBuffer();
           continue;
         }
         
         // 检查是否是标题行
         const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
         if (headingMatch) {
-          // 处理之前累积的段落
-          processParagraphs();
+          // 处理之前的段落
+          processParagraphBuffer();
           
           const level = headingMatch[1].length;
           const title = headingMatch[2].trim();
@@ -412,7 +599,7 @@ Page({
             currentHeadings.push(headingNode);
           } else {
             // 上级标题
-            while (currentHeadings.length > 1 && currentHeadings[currentHeadings.length - 1].level > level) {
+            while (currentHeadings.length > 1 && currentLevel - level < 0) {
               currentHeadings.pop();
             }
             if (currentHeadings.length > 0) {
@@ -425,67 +612,25 @@ Page({
           }
           
           currentLevel = level;
-        } else if (line.startsWith('```')) {
-          // 处理代码块
-          const codeBlockStart = i;
-          let codeContent = [];
-          i++; // 跳过开始标记
-          
-          // 寻找代码块结束
-          while (i < lines.length && !lines[i].trim().startsWith('```')) {
-            codeContent.push(lines[i]);
-            i++;
-          }
-          
-          // 如果找到了代码块内容，添加为当前标题的子节点
-          if (codeContent.length > 0 && currentHeadings.length > 0) {
-            const codeText = codeContent.join('\n').trim();
-            if (codeText) {
-              const codeNode = createNode(`代码: ${codeText.substring(0, 50)}...`);
-              currentHeadings[currentHeadings.length - 1].children.push(codeNode);
-            }
-          }
-        } else if (line.startsWith('- ') || line.startsWith('* ') || line.startsWith('+ ') || line.match(/^\d+\.\s/)) {
-          // 处理列表项
-          processParagraphs(); // 处理之前的段落
-          
-          if (currentHeadings.length > 0) {
-            const listItemText = line.replace(/^[-*+]\s+/, '').replace(/^\d+\.\s+/, '').trim();
-            if (listItemText) {
-              const listItemNode = createNode(listItemText);
-              currentHeadings[currentHeadings.length - 1].children.push(listItemNode);
-            }
-          }
-        } else if (line.startsWith('> ')) {
-          // 处理引用
-          processParagraphs(); // 处理之前的段落
-          
-          if (currentHeadings.length > 0) {
-            const quoteText = line.replace(/^>\s+/, '').trim();
-            if (quoteText) {
-              const quoteNode = createNode(`引用: ${quoteText}`);
-              currentHeadings[currentHeadings.length - 1].children.push(quoteNode);
-            }
-          }
+        } else if (line) {
+          // 非空行，添加到段落缓冲区
+          paragraphBuffer.push(line);
         } else {
-          // 普通段落文本，累积到段落缓存中
-          paragraphs.push(line);
+          // 空行，处理段落缓冲区
+          processParagraphBuffer();
         }
       }
       
-      // 处理最后剩余的段落
-      processParagraphs();
+      // 处理最后的段落或表格
+      if (inTable) {
+        processTable();
+      } else {
+        processParagraphBuffer();
+      }
       
-      // 如果没有生成有效的思维导图数据，则创建一个默认节点
+      // 如果没有找到根节点，创建一个默认的
       if (!rootNode) {
-        console.log('未能从Markdown生成有效的思维导图数据，创建默认节点');
-        rootNode = {
-          id: '文档概览',
-          children: [{
-            id: '文档内容',
-            children: []
-          }]
-        };
+        rootNode = createNode('文档内容');
       }
       
       console.log('思维导图数据生成完成');
@@ -723,6 +868,259 @@ Page({
       console.log('思维导图初始化完成');
     } catch (error) {
       console.error('初始化思维导图出错:', error);
+    }
+  },
+  
+  // 解析思维导图数据的方法
+  parseMindMapData: function(markdownContent) {
+    console.log('开始解析思维导图数据');
+    
+    if (!markdownContent) {
+      return null;
+    }
+    
+    try {
+      // 解析 Markdown 内容，生成思维导图数据
+      const lines = markdownContent.split('\n');
+      let rootNode = null;
+      let currentHeadings = []; // 存储当前的标题节点
+      let currentLevel = 0;
+      let inCodeBlock = false; // 标记是否在代码块内
+      let inTable = false; // 标记是否在表格内
+      let tableContent = []; // 存储表格内容
+      let paragraphBuffer = []; // 存储段落文本
+      
+      // 创建一个新节点
+      const createNode = (text) => {
+        return {
+          id: text,
+          children: []
+        };
+      };
+      
+      // 处理段落缓冲区
+      const processParagraphBuffer = () => {
+        if (paragraphBuffer.length > 0 && currentHeadings.length > 0) {
+          const paragraphText = paragraphBuffer.join(' ').trim();
+          if (paragraphText) {
+            // 将长段落分割成多个短段落
+            const maxLength = 100;
+            let remainingText = paragraphText;
+            
+            while (remainingText.length > 0) {
+              let chunkLength = Math.min(maxLength, remainingText.length);
+              
+              // 尝试在句子结束处截断
+              if (chunkLength < remainingText.length) {
+                const possibleEndPoints = ['.', '!', '?', '。', '！', '？', '；', ';'];
+                let lastEndPoint = -1;
+                
+                for (let i = 0; i < chunkLength; i++) {
+                  if (possibleEndPoints.includes(remainingText[i])) {
+                    lastEndPoint = i;
+                  }
+                }
+                
+                if (lastEndPoint !== -1) {
+                  chunkLength = lastEndPoint + 1;
+                }
+              }
+              
+              const chunk = remainingText.substring(0, chunkLength).trim();
+              if (chunk) {
+                const paragraphNode = createNode(chunk);
+                currentHeadings[currentHeadings.length - 1].children.push(paragraphNode);
+              }
+              
+              remainingText = remainingText.substring(chunkLength).trim();
+            }
+          }
+          paragraphBuffer = []; // 清空段落缓冲区
+        }
+      };
+      
+      // 处理表格内容
+      const processTable = () => {
+        if (tableContent.length > 0 && currentHeadings.length > 0) {
+          // 提取表格标题行
+          const headerRow = tableContent[0].trim().replace(/^\||\|$/g, '').split('|').map(cell => cell.trim());
+          
+          // 创建表格节点
+          const tableNode = createNode('表格数据');
+          
+          // 为表格的每一列创建子节点
+          for (let i = 0; i < headerRow.length; i++) {
+            const columnNode = createNode(headerRow[i]);
+            
+            // 添加该列的数据
+            for (let j = 2; j < tableContent.length; j++) { // 跳过标题行和分隔行
+              const row = tableContent[j].trim().replace(/^\||\|$/g, '').split('|').map(cell => cell.trim());
+              if (row.length > i) {
+                const cellNode = createNode(row[i]);
+                columnNode.children.push(cellNode);
+              }
+            }
+            
+            tableNode.children.push(columnNode);
+          }
+          
+          currentHeadings[currentHeadings.length - 1].children.push(tableNode);
+          tableContent = []; // 清空表格内容
+        }
+      };
+      
+      // 处理每一行
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        
+        // 处理代码块
+        if (line.startsWith('```')) {
+          if (!inCodeBlock) {
+            // 开始代码块
+            inCodeBlock = true;
+            processParagraphBuffer(); // 处理之前的段落
+            
+            // 检查是否是 mermaid 图表
+            const isMermaid = line.includes('mermaid');
+            
+            // 收集代码块内容
+            let codeContent = [];
+            i++;
+            
+            while (i < lines.length && !lines[i].trim().startsWith('```')) {
+              codeContent.push(lines[i]);
+              i++;
+            }
+            
+            // 创建代码块节点
+            if (codeContent.length > 0 && currentHeadings.length > 0) {
+              let nodeLabel = isMermaid ? '图表' : '代码';
+              
+              // 对于 mermaid 图表，尝试提取图表类型
+              if (isMermaid) {
+                const firstLine = codeContent[0].trim();
+                if (firstLine.includes('pie')) {
+                  nodeLabel = '饼图';
+                } else if (firstLine.includes('graph')) {
+                  nodeLabel = '流程图';
+                }
+              }
+              
+              const codeNode = createNode(nodeLabel);
+              currentHeadings[currentHeadings.length - 1].children.push(codeNode);
+            }
+            
+            inCodeBlock = false; // 结束代码块
+          } else {
+            // 结束代码块
+            inCodeBlock = false;
+          }
+          continue;
+        }
+        
+        // 如果在代码块内，跳过处理
+        if (inCodeBlock) {
+          continue;
+        }
+        
+        // 处理表格
+        if (line.startsWith('|')) {
+          if (!inTable) {
+            // 开始新表格
+            inTable = true;
+            processParagraphBuffer(); // 处理之前的段落
+          }
+          
+          tableContent.push(line);
+          continue;
+        } else if (inTable) {
+          // 结束表格
+          inTable = false;
+          processTable();
+        }
+        
+        // 跳过分隔线
+        if (line.match(/^-{3,}$/) || line.match(/^\*{3,}$/) || line.match(/^_{3,}$/)) {
+          processParagraphBuffer();
+          continue;
+        }
+        
+        // 检查是否是标题行
+        const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
+        if (headingMatch) {
+          // 处理之前的段落
+          processParagraphBuffer();
+          
+          const level = headingMatch[1].length;
+          const title = headingMatch[2].trim();
+          
+          // 创建标题节点
+          const headingNode = createNode(title);
+          
+          // 如果是根节点
+          if (!rootNode) {
+            rootNode = headingNode;
+            currentHeadings = [rootNode];
+            currentLevel = level;
+            continue;
+          }
+          
+          // 处理层级关系
+          if (level > currentLevel) {
+            // 子标题
+            currentHeadings[currentHeadings.length - 1].children.push(headingNode);
+            currentHeadings.push(headingNode);
+          } else if (level === currentLevel) {
+            // 同级标题
+            currentHeadings.pop();
+            if (currentHeadings.length > 0) {
+              currentHeadings[currentHeadings.length - 1].children.push(headingNode);
+            } else {
+              // 如果没有父节点，则作为根节点的同级节点
+              rootNode.children.push(headingNode);
+            }
+            currentHeadings.push(headingNode);
+          } else {
+            // 上级标题
+            while (currentHeadings.length > 1 && currentLevel - level < 0) {
+              currentHeadings.pop();
+            }
+            if (currentHeadings.length > 0) {
+              currentHeadings[currentHeadings.length - 1].children.push(headingNode);
+            } else {
+              // 如果没有父节点，则作为根节点的同级节点
+              rootNode.children.push(headingNode);
+            }
+            currentHeadings.push(headingNode);
+          }
+          
+          currentLevel = level;
+        } else if (line) {
+          // 非空行，添加到段落缓冲区
+          paragraphBuffer.push(line);
+        } else {
+          // 空行，处理段落缓冲区
+          processParagraphBuffer();
+        }
+      }
+      
+      // 处理最后的段落或表格
+      if (inTable) {
+        processTable();
+      } else {
+        processParagraphBuffer();
+      }
+      
+      // 如果没有找到根节点，创建一个默认的
+      if (!rootNode) {
+        rootNode = createNode('文档内容');
+      }
+      
+      // 返回简化的数据格式
+      return rootNode;
+    } catch (error) {
+      console.error('解析思维导图数据失败:', error);
+      return null;
     }
   }
 });

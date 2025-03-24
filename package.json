@@ -16,7 +16,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@antv/f6-wx": "^0.0.7"
   },
   "devDependencies": {
     "miniprogram-api-typings": "^3.9.1"
