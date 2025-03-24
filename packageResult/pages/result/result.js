@@ -96,6 +96,7 @@ Page({
   
   // 滚动到底部
   scrollToBottom() {
+    console.log(this.data.userHasInteracted);
     // 如果用户已交互，则不自动滚动
     if (this.data.userHasInteracted) {
       return;
@@ -109,25 +110,6 @@ Page({
       });
       console.log('执行滚动到底部');
     }, 100);
-  },
-  
-  // 监听页面滚动事件
-  onPageScroll(e) {
-    // 记录最后一次滚动位置
-    this.lastScrollTop = e.scrollTop;
-    
-    // 如果是自动滚动，不标记用户交互
-    if (this.isAutoScrolling) {
-      return;
-    }
-    
-    // 用户手动滚动，标记为已交互
-    if (!this.data.userHasInteracted) {
-      console.log('用户手动滚动，标记为已交互');
-      this.setData({
-        userHasInteracted: true
-      });
-    }
   },
   
   // 提供一个方法让用户重新启用自动滚动
@@ -578,8 +560,33 @@ Page({
   
   // 页面卸载时清除定时器
   onUnload() {
+    // 清除定时器
     if (this.pollingTimer) {
       clearInterval(this.pollingTimer);
+    }
+    
+    // 清除全局数据
+    const app = getApp();
+    app.globalData.markdownContent = '';
+    app.globalData.mindMapData = null;
+    app.globalData.isStreamingMarkdown = false;
+    app.globalData.streamingComplete = false;
+    
+    // 清除页面数据
+    this.setData({
+      markdownContent: '',
+      article: null,
+      mindMapData: null,
+      isStreaming: false,
+      streamingComplete: false,
+      lastValidContent: '',
+      userHasInteracted: false
+    });
+    
+    // 如果存在图表实例，销毁它
+    if (this.graph) {
+      this.graph.destroy();
+      this.graph = null;
     }
   },
   

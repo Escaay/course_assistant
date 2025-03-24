@@ -114,19 +114,24 @@ image.png
   position: fixed;
   bottom: 0;
   left: 0;
-  width: 100%;
+  width: 80%;
   display: flex;
-  justify-content: space-around;
+  justify-content: space-between;
   padding: 20rpx;
   background-color: #fff;
   box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.05);
   z-index: 100;
+  box-sizing: border-box;
 }
 
 /* 自定义按钮样式覆盖 */
 .action-buttons .custom-button {
-  flex: 1;
-  margin: 0 10rpx;
+  flex: 0.48;
+  max-width: 48%;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* 添加加载指示器样式 */
