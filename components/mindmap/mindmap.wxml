@@ -1,0 +1,39 @@
+<movable-area style="width: {{width}}px; height: {{height}}px; overflow: hidden;">
+  <movable-view 
+    style="width: {{totalWidth * scale}}px; height: {{totalHeight * scale}}px; transform: scale({{scale}});"
+    x="{{translateX}}" 
+    y="{{translateY}}" 
+    direction="all"
+    scale="true"
+    scale-min="0.1"
+    scale-max="2"
+    bindtouchstart="handleTouchStart"
+    bindtouchmove="handleTouchMove"
+    bindtouchend="handleTouchEnd"
+    bindscale="handleScale"
+  >
+    <canvas 
+      type="2d" 
+      id="mindmap-canvas" 
+      style="width: {{totalWidth}}px; height: {{totalHeight}}px;"
+      bindtouchstart="handleTouchStart"
+      bindtouchmove="handleTouchMove"
+      bindtouchend="handleTouchEnd"
+    ></canvas>
+    
+    <!-- 备用的DOM渲染方式 -->
+    <view class="mindmap-container" wx:if="{{!canvasReady}}">
+      <view class="mindmap-node root">{{data.name}}</view>
+      <view class="mindmap-children">
+        <view class="mindmap-branch" wx:for="{{data.children}}" wx:key="index">
+          <view class="mindmap-node child">{{item.name}}</view>
+          <view class="mindmap-grandchildren">
+            <view class="mindmap-node grandchild" wx:for="{{item.children}}" wx:for-item="grandchild" wx:key="index">
+              {{grandchild.name}}
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </movable-view>
+</movable-area> 

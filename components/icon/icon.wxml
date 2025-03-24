@@ -1,0 +1,1 @@
+<view class="custom-icon {{name}}" style="width: {{size}}; height: {{size}}; color: {{color}};"></view> 

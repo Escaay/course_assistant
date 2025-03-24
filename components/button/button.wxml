@@ -1,0 +1,9 @@
+<button 
+  class="custom-button {{type}} {{size}} {{block ? 'block' : ''}} {{disabled ? 'disabled' : ''}}"
+  disabled="{{disabled || loading}}"
+  catchtap="handleTap"
+>
+  <view wx:if="{{loading}}" class="loading"></view>
+  <view wx:elif="{{icon}}" class="icon {{icon}}"></view>
+  <slot></slot>
+</button> 

@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "openapi": [
+      "ai.bot.sendMessage"
+    ]
+  },
+  "runtime": "Nodejs18.15"
+} 

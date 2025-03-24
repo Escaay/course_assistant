@@ -1,0 +1,265 @@
+/**result.wxss**/
+page {
+  height: 100%;
+  background-color: #fff;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto; /* 确保页面可以滚动 */
+}
+
+.markdown-container {
+  width: 100%; /* 设置为100%宽度 */
+  padding: 30rpx;
+  padding-bottom: 150rpx;
+  background-color: #fff;
+  box-sizing: border-box;
+  flex: 1;
+}
+
+.towxml-container {
+  padding: 30rpx;
+  background-color: #fff;
+  margin-top: 0;
+}
+
+/* towxml主题样式覆盖 */
+.h2w {
+  padding: 0 !important;
+  margin: 0 !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+image.png
+.h2w__main {
+  margin: 0 !important;
+  padding: 0 !important;
+  padding-bottom: 40rpx !important;
+}
+
+/* 确保第一个元素没有顶部边距 */
+.h2w__h1:first-child,
+.h2w__h2:first-child,
+.h2w__p:first-child {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+.h2w-light .h2w__h1,
+.h2w-light .h2w__h2 {
+  border-color: #0052d9;
+}
+
+.h2w-light .h2w__blockquote {
+  border-left-color: #0052d9;
+}
+
+/* 代码块样式优化 */
+.h2w-light .h2w__code {
+  border-color: #eee;
+  white-space: pre-wrap !important; /* 允许代码自动换行 */
+  word-wrap: break-word !important; /* 在长单词或URL地址内部进行换行 */
+  word-break: break-all !important; /* 允许在单词内换行 */
+  overflow-x: hidden !important; /* 隐藏水平滚动条 */
+  max-width: 100% !important; /* 确保不超过容器宽度 */
+}
+
+/* 行内代码样式 */
+.h2w-light .h2w__code.inline {
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  word-break: break-all !important;
+}
+
+/* 代码块容器样式 */
+.h2w__pre {
+  max-width: 100% !important;
+  overflow-x: auto !important; /* 允许水平滚动 */
+}
+
+/* 表格样式优化，防止表格撑开布局 */
+.h2w__table {
+  display: block !important;
+  width: 100% !important;
+  overflow-x: auto !important;
+  max-width: 100% !important;
+}
+
+/* 移除可能的箭头或其他多余元素 */
+.h2w__menu,
+.h2w__menulist,
+.h2w__navigator {
+  display: none !important;
+}
+
+/* 确保所有内容都不会超出容器 */
+.h2w__p,
+.h2w__ul,
+.h2w__ol,
+.h2w__li,
+.h2w__blockquote {
+  max-width: 100% !important;
+  word-wrap: break-word !important;
+  word-break: break-word !important;
+}
+
+/* 最后一个元素添加适当的底部边距 */
+.h2w__p:last-child,
+.h2w__ul:last-child,
+.h2w__ol:last-child,
+.h2w__blockquote:last-child,
+.h2w__pre:last-child {
+  margin-bottom: 20rpx !important;
+}
+
+.action-buttons {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: space-around;
+  padding: 20rpx;
+  background-color: #fff;
+  box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.05);
+  z-index: 100;
+}
+
+/* 自定义按钮样式覆盖 */
+.action-buttons .custom-button {
+  flex: 1;
+  margin: 0 10rpx;
+}
+
+/* 添加加载指示器样式 */
+.loading-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30rpx 0;
+}
+
+.loading-dots {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 10rpx;
+}
+
+.dot {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  background-color: #0052d9;
+  margin: 0 6rpx;
+  animation: dot-flashing 1s infinite alternate;
+}
+
+.dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes dot-flashing {
+  0% {
+    opacity: 0.2;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.loading-text {
+  font-size: 24rpx;
+  color: #666;
+}
+
+/* 添加标签栏样式 */
+.tab-container {
+  display: flex;
+  width: 100%;
+  height: 80rpx;
+  background-color: #fff;
+  border-bottom: 1rpx solid #eee;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.tab {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 28rpx;
+  color: #666;
+  position: relative;
+}
+
+.tab.active {
+  color: #0052d9;
+  font-weight: 500;
+}
+
+.tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40rpx;
+  height: 4rpx;
+  background-color: #0052d9;
+  border-radius: 2rpx;
+}
+
+/* 禁用状态的标签样式 */
+.tab.disabled {
+  color: #ccc;
+  pointer-events: none;
+}
+
+.tab.disabled.active {
+  color: #8eb3e6;
+}
+
+.tab.disabled.active::after {
+  background-color: #8eb3e6;
+}
+
+/* 内容容器样式 */
+.content-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: calc(100vh - 80rpx);
+  box-sizing: border-box;
+  background-color: #fff;
+  padding-bottom: 150rpx; /* 为底部按钮留出空间 */
+}
+
+/* 思维导图容器样式 */
+.mindmap-container {
+  width: 100%;
+  height: calc(100vh - 80rpx - 150rpx); /* 减去标签栏和底部按钮的高度 */
+  position: relative;
+}
+
+/* 思维导图加载状态 */
+.mindmap-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20rpx;
+}
+
+.mindmap-loading text {
+  font-size: 28rpx;
+  color: #666;
+}

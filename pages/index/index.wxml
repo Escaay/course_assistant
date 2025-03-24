@@ -1,0 +1,61 @@
+<!--index.wxml-->
+<scroll-view class="scrollarea" scroll-y type="list">
+  <view class="container">
+    <view class="header">
+      <image class="logo" src="/images/logo.png" mode="aspectFit"></image>
+      <text class="title">AI文档助手</text>
+      <text class="subtitle">上传文档，智能生成结构化内容</text>
+    </view>
+    
+    <view class="upload-section">
+      <view class="upload-area" bindtap="chooseFile">
+        <custom-icon name="upload" size="80rpx" color="#0052d9" />
+        <text class="upload-text">点击上传文件</text>
+        <text class="upload-tip">支持PDF和Word文档格式</text>
+      </view>
+    </view>
+    
+    <view class="file-list" wx:if="{{fileList.length > 0}}">
+      <view class="file-list-header">
+        <text class="section-title">已选择的文件</text>
+        <text class="file-count">{{fileList.length}}</text>
+      </view>
+      
+      <view class="file-items">
+        <view 
+          class="file-item" 
+          wx:for="{{fileList}}" 
+          wx:key="index"
+        >
+          <view class="file-info">
+            <view class="file-icon {{item.type === 'PDF' ? 'pdf-icon' : 'doc-icon'}}">
+              {{item.type}}
+            </view>
+            <view class="file-details">
+              <text class="file-name">{{item.name}}</text>
+              <text class="file-size">{{item.size}}KB</text>
+            </view>
+          </view>
+          <view class="delete-btn" data-index="{{index}}" bindtap="deleteFile">
+            <custom-icon name="close" size="40rpx" color="#999" />
+          </view>
+        </view>
+      </view>
+    </view>
+    
+    <view class="action-area">
+      <custom-button 
+        type="primary" 
+        size="large" 
+        block="{{true}}" 
+        disabled="{{fileList.length === 0 || isConverting}}" 
+        loading="{{isConverting}}"
+        icon="{{isConverting ? '' : 'play-circle-stroke'}}"
+        bindtap="convertFiles"
+        class="convert-btn"
+      >
+        {{isConverting ? '处理中...' : '开始处理'}}
+      </custom-button>
+    </view>
+  </view>
+</scroll-view>

@@ -1,0 +1,11 @@
+{
+  "navigationBarTitleText": "文档内容",
+  "usingComponents": {
+    "F6": "../../lib/@antv/f6-wx/canvas/canvas",
+    "custom-tabs": "../../components/tabs/tabs",
+    "custom-tab-panel": "../../components/tabs/tab-panel",
+    "custom-button": "/components/button/button",
+    "custom-icon": "/components/icon/icon",
+    "towxml": "../../lib/towxml/towxml"
+  }
+}

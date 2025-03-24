@@ -1,0 +1,42 @@
+{
+  "pages": [
+    "pages/index/index"
+  ],
+  "subpackages": [
+    {
+      "root": "packageResult",
+      "pages": [
+        "pages/result/result"
+      ]
+    }
+  ],
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#fff",
+    "navigationBarTitleText": "AI文档助手",
+    "navigationBarTextStyle": "black",
+    "navigationStyle": "default"
+  },
+  "style": "v2",
+  "renderer": "webview",
+  "rendererOptions": {
+    "skyline": {
+      "defaultDisplayBlock": true,
+      "defaultContentBox": true,
+      "tagNameStyleIsolation": "legacy",
+      "disableABTest": true,
+      "sdkVersionBegin": "3.0.0",
+      "sdkVersionEnd": "15.255.255"
+    }
+  },
+  "componentFramework": "glass-easel",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents",
+  "cloud": true,
+  "preloadRule": {
+    "pages/index/index": {
+      "network": "all",
+      "packages": ["packageResult"]
+    }
+  }
+}

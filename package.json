@@ -1,0 +1,24 @@
+{
+  "name": "course-assistant",
+  "version": "1.0.0",
+  "description": "课件转换与思维导图生成小程序",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "微信小程序",
+    "课件转换",
+    "思维导图",
+    "PDF",
+    "Word"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@antv/f6-wx": "^0.0.7"
+  },
+  "devDependencies": {
+    "miniprogram-api-typings": "^3.9.1"
+  }
+}

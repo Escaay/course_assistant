@@ -1,0 +1,16 @@
+<view class="custom-tabs">
+  <view class="tabs-header">
+    <view 
+      wx:for="{{tabs}}" 
+      wx:key="index" 
+      class="tab-item {{currentTab === index ? 'active' : ''}} {{disabledTabs[index] ? 'disabled' : ''}}"
+      data-index="{{index}}"
+      bindtap="{{disabledTabs[index] ? '' : 'handleTabClick'}}"
+    >
+      {{item}}
+    </view>
+  </view>
+  <view class="tabs-content">
+    <slot></slot>
+  </view>
+</view> 
