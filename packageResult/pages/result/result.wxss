@@ -121,7 +121,7 @@ image.png
   padding: 20rpx;
   background-color: #fff;
   box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.05);
-  z-index: 100;
+  z-index: 1000;
   box-sizing: border-box;
 }
 
@@ -142,6 +142,8 @@ image.png
   box-sizing: border-box;
   border: none;
   line-height: 1.5;
+  position: relative;
+  z-index: 1001;
 }
 
 .action-button.primary {
