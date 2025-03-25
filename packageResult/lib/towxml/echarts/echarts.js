@@ -44,7 +44,9 @@ Component({
 
 			let dataAttr = this.data.data.attrs,
 				obj = JSON.parse(decodeURIComponent(dataAttr.value));
-			obj.option.color = ['#60acfc', '#32d3eb', '#5bc49f', '#feb64d', '#ff7c7c', '#9287e7'];
+				console.log('dataAttr', dataAttr)
+				console.log('obj', obj)
+			obj.color = ['#60acfc', '#32d3eb', '#5bc49f', '#feb64d', '#ff7c7c', '#9287e7'];
 			if (obj.height) {
 				_ts.setData({
 					size: {
@@ -62,7 +64,7 @@ Component({
 					});
 				canvas.setChart(chart);
 
-				chart.setOption(obj.option);
+				chart.setOption(obj);
 				return chart;
 			};
 		},
