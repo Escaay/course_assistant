@@ -58,6 +58,7 @@ Page({
   },
   
   onTabChange: function(e) {
+    console.log('tabchange')
     const index = parseInt(e.currentTarget.dataset.index);
     
     // 如果标签被禁用，则不切换
@@ -84,7 +85,10 @@ Page({
           console.log('思维导图页面打开成功');
           
           // 通过eventChannel向被打开页面传送数据
-          res.eventChannel.emit('acceptDataFromOpenerPage', { data: 'from result page' });
+          // res.eventChannel.emit('acceptDataFromOpenerPage', { 
+          //   data: 'from result page',
+          //   mindmapUrl: this.data.mindmapUrl // 也可以通过事件通道传递URL
+          // });
         },
         fail: function(err) {
           console.error('打开思维导图页面失败:', err);

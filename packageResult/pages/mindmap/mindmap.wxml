@@ -1,5 +1,15 @@
-<!-- web-view会自动铺满整个页面，不需要额外的容器 -->
-<web-view wx:if="{{!loadError}}" src="{{url}}" bindmessage="handleWebViewMessage" bindload="handleWebViewLoad" binderror="handleWebViewError"></web-view>
+<!-- 只有在URL不为空且没有加载错误时才显示web-view -->
+<web-view wx:if="{{url && !loadError}}" src="{{url}}"></web-view>
+
+<!-- 加载中提示 -->
+<view class="loading-container" wx:if="{{!url && !loadError}}">
+  <view class="loading-dots">
+    <view class="dot"></view>
+    <view class="dot"></view>
+    <view class="dot"></view>
+  </view>
+  <text class="loading-text">正在加载思维导图...</text>
+</view>
 
 <!-- 加载错误提示 -->
 <view class="error-container" wx:if="{{loadError}}">

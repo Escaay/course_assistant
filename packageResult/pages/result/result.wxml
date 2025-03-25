@@ -43,11 +43,6 @@
   
   <!-- 思维导图标签页 -->
   <view class="mindmap-container" style="display: {{activeTab === 1 ? 'block' : 'none'}}">
-    <!-- 思维导图内容 -->
-    <block wx:if="{{mindmapUrl}}">
-      <web-view src="{{mindmapUrl}}" bindmessage="handleWebViewMessage"></web-view>
-    </block>
-    
     <!-- 思维导图加载状态 -->
     <view class="mindmap-loading" wx:if="{{!mindmapUrl}}">
       <view class="loading-dots">
