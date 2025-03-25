@@ -44,16 +44,13 @@ Component({
 
 			let dataAttr = this.data.data.attrs,
 				obj = JSON.parse(decodeURIComponent(dataAttr.value));
-				console.log('dataAttr', dataAttr)
 				console.log('obj', obj)
 			obj.color = ['#60acfc', '#32d3eb', '#5bc49f', '#feb64d', '#ff7c7c', '#9287e7'];
-			if (obj.height) {
 				_ts.setData({
 					size: {
-						height: obj.height
+						height: obj.height ? obj.height : 240
 					}
 				})
-			}
 			_ts.data.ec = {};
 			_ts.data.ec.onInit = function (canvas, width, height) {
 				echarts.registerTheme('dark', darkTheme);
