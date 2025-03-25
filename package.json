@@ -16,6 +16,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "markmap-lib": "^0.16.0"
   },
   "devDependencies": {
     "miniprogram-api-typings": "^3.9.1"

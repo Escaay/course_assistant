@@ -6,7 +6,8 @@
     {
       "root": "packageResult",
       "pages": [
-        "pages/result/result"
+        "pages/result/result",
+        "pages/mindmap/mindmap"
       ]
     }
   ],

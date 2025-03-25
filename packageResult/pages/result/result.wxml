@@ -1,95 +1,80 @@
-  <custom-tabs 
-    tabs="{{['文档内容', '思维导图']}}" 
-    active="{{activeTab}}" 
-    disabledTabs="{{disabledTabs}}"
-    bind:change="onTabChange"
-  >
-    <custom-tab-panel index="0" active="{{activeTab}}">
-      <scroll-view 
-        scroll-y 
-        enhanced="true"
-        show-scrollbar="true"
-        class="markdown-container" 
-        scroll-with-animation="{{!userHasInteracted}}"
-        bindtouchstart="handleTouchStart"
-      >
-        <!-- 使用 towxml 组件渲染 Markdown 内容 -->
-        <towxml nodes="{{article}}" />
-        
-        <!-- 流式加载指示器 -->
-        <view class="loading-indicator" wx:if="{{isStreaming && !streamingComplete}}">
-          <view class="loading-dots">
-            <view class="dot"></view>
-            <view class="dot"></view>
-            <view class="dot"></view>
-          </view>
-          <text class="loading-text">正在生成内容...</text>
-        </view>
-      </scroll-view>
-    </custom-tab-panel>
-    
-    <custom-tab-panel index="1" active="{{activeTab}}">
-      <view class="mindmap-container">
-        <!-- 使用 F6 组件 -->
-        <F6
-          width="{{canvasWidth}}"
-          height="{{canvasHeight}}"
-          pixelRatio="{{pixelRatio}}"
-          bind:onInit="onCanvasInit"
-          bind:onTouchEvent="onCanvasTouch"
-        ></F6>
-        
-        <!-- 思维导图加载状态 -->
-        <view class="mindmap-loading" wx:if="{{!graphReady}}">
-          <view class="loading-dots">
-            <view class="dot"></view>
-            <view class="dot"></view>
-            <view class="dot"></view>
-          </view>
-          <text>正在生成思维导图...</text>
-        </view>
-      </view>
-    </custom-tab-panel>
-  </custom-tabs>
+<view class="content-container">
+  <!-- 标签栏 -->
+  <view class="tab-container">
+    <view 
+      class="tab {{activeTab === 0 ? 'active' : ''}} {{disabledTabs[0] ? 'disabled' : ''}}" 
+      bindtap="onTabChange" 
+      data-index="0"
+    >
+      文档内容
+    </view>
+    <view 
+      class="tab {{activeTab === 1 ? 'active' : ''}} {{disabledTabs[1] ? 'disabled' : ''}}" 
+      bindtap="onTabChange" 
+      data-index="1"
+    >
+      思维导图
+    </view>
+  </view>
   
-  <!-- 底部操作按钮 -->
-  <view class="action-buttons">
-    <button 
-      class="action-button primary"
-      bindtap="copyContent"
-    >
-      <view class="button-icon copy-icon"></view>
-      <text>复制内容</text>
-    </button>
+  <!-- 文档内容标签页 -->
+  <scroll-view 
+    scroll-y 
+    enhanced="true"
+    show-scrollbar="true"
+    class="markdown-container" 
+    scroll-with-animation="{{!userHasInteracted}}"
+    bindtouchstart="handleTouchStart"
+    style="display: {{activeTab === 0 ? 'block' : 'none'}}"
+  >
+    <!-- 使用 towxml 组件渲染 Markdown 内容 -->
+    <towxml nodes="{{article}}" />
     
-    <button 
-      class="action-button default"
-      bindtap="saveToFile"
-    >
-      <view class="button-icon save-icon"></view>
-      <text>保存文件</text>
-    </button>
-  </view>
-
+    <!-- 流式加载指示器 -->
+    <view class="loading-indicator" wx:if="{{isStreaming && !streamingComplete}}">
+      <view class="loading-dots">
+        <view class="dot"></view>
+        <view class="dot"></view>
+        <view class="dot"></view>
+      </view>
+      <text class="loading-text">正在生成内容...</text>
+    </view>
+  </scroll-view>
+  
   <!-- 思维导图标签页 -->
-  <view class="mindmap-container" wx:if="{{activeTab === 1}}">
-    <view wx:if="{{isGeneratingMindMap}}" class="loading-container">
-      <view class="loading"></view>
-      <text>正在生成思维导图...</text>
+  <view class="mindmap-container" style="display: {{activeTab === 1 ? 'block' : 'none'}}">
+    <!-- 思维导图内容 -->
+    <block wx:if="{{mindmapUrl}}">
+      <web-view src="{{mindmapUrl}}" bindmessage="handleWebViewMessage"></web-view>
+    </block>
+    
+    <!-- 思维导图加载状态 -->
+    <view class="mindmap-loading" wx:if="{{!mindmapUrl}}">
+      <view class="loading-dots">
+        <view class="dot"></view>
+        <view class="dot"></view>
+        <view class="dot"></view>
+      </view>
+      <text>{{isGeneratingMindMap ? '正在生成思维导图...' : '思维导图加载失败'}}</text>
     </view>
-    <view wx:elif="{{!mindMapData}}" class="empty-container">
-      <text>暂无思维导图数据</text>
-    </view>
-    <f6-canvas
-      wx:else
-      id="mindmap-canvas"
-      width="{{canvasWidth}}"
-      height="{{canvasHeight}}"
-      forceMini="{{forceMini}}"
-      pixelRatio="{{pixelRatio}}"
-      bindtouchstart="handleTouch"
-      bindtouchmove="handleTouch"
-      bindtouchend="handleTouch"
-      bindinit="handleInit"
-    ></f6-canvas>
   </view>
+</view>
+
+<!-- 底部操作按钮 -->
+<view class="action-buttons">
+  <button 
+    class="action-button primary"
+    bindtap="copyContent"
+  >
+    <view class="button-icon copy-icon"></view>
+    <text>复制内容</text>
+  </button>
+  
+  <button 
+    class="action-button default"
+    bindtap="saveToFile"
+  >
+    <view class="button-icon save-icon"></view>
+    <text>保存文件</text>
+  </button>
+</view>

@@ -1,0 +1,9 @@
+<!-- web-view会自动铺满整个页面，不需要额外的容器 -->
+<web-view wx:if="{{!loadError}}" src="{{url}}" bindmessage="handleWebViewMessage" bindload="handleWebViewLoad" binderror="handleWebViewError"></web-view>
+
+<!-- 加载错误提示 -->
+<view class="error-container" wx:if="{{loadError}}">
+  <icon type="warn" size="64"></icon>
+  <text class="error-text">{{errorMsg}}</text>
+  <button class="back-button" bindtap="goBack">返回</button>
+</view> 
