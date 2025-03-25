@@ -277,61 +277,65 @@ ${markdownContent}
   processEchartsBlocks(content) {
     if (!content) return content;
     
-    // 存储处理后的内容
     let processedContent = '';
-    // 标记是否在 echarts 代码块内
     let inEchartsBlock = false;
-    // 存储当前的 echarts 代码块内容
+    let inMarkdownBlock = false;
     let currentEchartsBlock = '';
-    // 存储 echarts 代码块的开始标记
+    let currentMarkdownBlock = '';
     let echartsStartMarker = '';
     
     // 按行处理内容
-    const lines = content.split('\n');
+    const lines = content.split(/\r?\n/);
     
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
+      const line = lines[i].trimRight();
       
-      // 检查是否是 echarts 代码块的开始
+      // 处理 echarts 代码块
       if (line.trim().startsWith('```echarts')) {
         inEchartsBlock = true;
         echartsStartMarker = line;
         currentEchartsBlock = '';
         continue;
-      }
-      
-      // 检查是否是代码块的结束
-      if (inEchartsBlock && line.trim() === '```') {
+      } else if (inEchartsBlock && line === '```') {
         inEchartsBlock = false;
-        
-        // 尝试解析 JSON 以验证完整性
         try {
           const jsonContent = currentEchartsBlock.trim();
           JSON.parse(jsonContent);
-          
-          // JSON 有效，添加完整的 echarts 代码块
           processedContent += echartsStartMarker + '\n' + currentEchartsBlock + '\n```\n';
         } catch (error) {
           console.error('echarts JSON 解析失败，跳过此代码块:', error);
-          // JSON 无效，添加注释说明
           processedContent += '> *图表数据正在加载中...*\n\n';
         }
-        
         continue;
       }
       
-      // 如果在 echarts 代码块内，收集内容
+      // 处理 markdown 代码块
+      if (line.trim().startsWith('```markdown')) {
+        inMarkdownBlock = true;
+        currentMarkdownBlock = '';
+        continue;
+      } else if (inMarkdownBlock && line === '```') {
+        inMarkdownBlock = false;
+        // 直接添加 markdown 内容，不包含代码块标记
+        processedContent += currentMarkdownBlock.trim() + '\n\n';
+        continue;
+      }
+      
+      // 收集代码块内容或添加普通行
       if (inEchartsBlock) {
         currentEchartsBlock += line + '\n';
+      } else if (inMarkdownBlock) {
+        currentMarkdownBlock += line + '\n';
       } else {
-        // 不在 echarts 代码块内，直接添加到处理后的内容
         processedContent += line + '\n';
       }
     }
     
-    // 处理可能未闭合的 echarts 代码块
+    // 处理未闭合的代码块
     if (inEchartsBlock) {
       processedContent += '> *图表数据正在加载中...*\n\n';
+    } else if (inMarkdownBlock) {
+      processedContent += currentMarkdownBlock;
     }
     
     return processedContent;
@@ -371,7 +375,6 @@ ${markdownContent}
           }
           
           if (latestContent.length > lastContentLength) {
-            console.log('流式内容更新:', latestContent.length, '上次长度:', lastContentLength);
             
             // 使用 towxml 渲染更新的内容
             this.renderMarkdown(latestContent);
@@ -448,7 +451,6 @@ ${markdownContent}
         scrollTop: 100000, // 一个更大的值，确保滚动到底部
         duration: 300
       });
-      console.log('执行滚动到底部');
     }, 100);
   },
   
@@ -474,7 +476,6 @@ ${markdownContent}
         scrollTop: 100000, // 一个更大的值，确保滚动到底部
         duration: 300
       });
-      console.log('执行滚动到底部');
       
       // 300毫秒后重置标志（与滚动动画持续时间相同）
       setTimeout(() => {
