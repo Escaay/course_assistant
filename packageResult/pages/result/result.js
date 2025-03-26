@@ -262,8 +262,7 @@ ${markdownContent}
         article: article,
         markdownContent: content
       });
-      
-      console.log('Markdown 渲染完成，内容长度:', content.length);
+      console.log('content', article)
     } catch (error) {
       console.error('解析 Markdown 失败:', error);
       // 出错时显示原始内容
@@ -273,69 +272,172 @@ ${markdownContent}
     }
   },
   
-  // 处理 echarts 代码块，确保它们完整
+  // 处理特殊代码块（echarts、yuml、LaTeX）
   processEchartsBlocks(content) {
     if (!content) return content;
     
     let processedContent = '';
-    let inEchartsBlock = false;
-    let inMarkdownBlock = false;
-    let currentEchartsBlock = '';
-    let currentMarkdownBlock = '';
-    let echartsStartMarker = '';
+    let inSpecialBlock = false;
+    let currentBlock = '';
+    let blockType = '';
+    let blockStartMarker = '';
     
     // 按行处理内容
     const lines = content.split(/\r?\n/);
     
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trimRight();
-      
-      // 处理 echarts 代码块
-      if (line.trim().startsWith('```echarts')) {
-        inEchartsBlock = true;
-        echartsStartMarker = line;
-        currentEchartsBlock = '';
-        continue;
-      } else if (inEchartsBlock && line === '```') {
-        inEchartsBlock = false;
-        try {
-          const jsonContent = currentEchartsBlock.trim();
-          JSON.parse(jsonContent);
-          processedContent += echartsStartMarker + '\n' + currentEchartsBlock + '\n```\n';
-        } catch (error) {
-          console.error('echarts JSON 解析失败，跳过此代码块:', error);
-          processedContent += '> *图表数据正在加载中...*\n\n';
+        const line = lines[i].trimRight();
+        
+        // 检查是否是特殊代码块的开始
+        if (line.trim().startsWith('```markdown')) {
+            inSpecialBlock = true;
+            blockType = 'markdown';
+            currentBlock = '';
+            continue;
+        } else if (line.trim().startsWith('```latex')) {
+            inSpecialBlock = true;
+            blockType = 'latex';
+            currentBlock = '';
+            continue;
+        } else if (line.trim().startsWith('```yuml')) {
+            inSpecialBlock = true;
+            blockType = 'yuml';
+            blockStartMarker = line;
+            currentBlock = '';
+            continue;
+        } else if (line.trim().startsWith('```echarts')) {
+            inSpecialBlock = true;
+            blockType = 'echarts';
+            blockStartMarker = line;
+            currentBlock = '';
+            continue;
+        } else if (line.trim() === '$$') {
+            // console.log('数学公式标记:', line)
+            if (!inSpecialBlock) {
+                // 多行数学公式开始
+                // console.log('多行数学公式开始')
+                inSpecialBlock = true;
+                blockType = 'math-block';
+                currentBlock = '$$\n';  // 保留开始标记
+            } else if (blockType === 'math-block') {
+                // 多行数学公式结束
+                currentBlock += '$$';  // 保留结束标记
+                
+                // 检查是否包含中文的数学公式
+                if (currentBlock.includes('\\text{')) {
+                    // 提取公式内容
+                    const formulaLines = currentBlock
+                        .replace(/\$\$/g, '') // 移除 $$
+                        .replace('\\boxed{', '') // 移除 boxed
+                        .replace('\\begin{aligned}', '') // 移除 aligned 开始
+                        .replace('\\end{aligned}', '') // 移除 aligned 结束
+                        .replace(/}$/, '') // 移除最后的 }
+                        .split('\\\\') // 按行分割
+                        .map(line => line.trim()) // 清理空白
+                        .filter(line => line); // 移除空行
+
+                    let markdownContent = '';
+                    
+                    formulaLines.forEach(line => {
+                        // 提取中文文本和公式部分
+                        const parts = line.split('=').map(part => part.trim());
+                        if (parts.length === 2) {
+                            // 提取参数名（中文部分）
+                            const paramMatch = parts[0].match(/\\text\{([^}]+)\}/);
+                            if (paramMatch) {
+                                const paramName = paramMatch[1];
+                                
+                                // 处理公式部分，移除所有中文
+                                let formula = parts[1]
+                                    .replace(/\\text\{[^}]+\}/g, '') // 移除所有 \text{...}
+                                    .replace(/（[^）]*）/g, '') // 移除中文括号及其内容
+                                    .trim();
+                                
+                                // 如果公式部分为空，用变量替代
+                                if (!formula.replace(/\s/g, '')) {
+                                    formula = 'x';
+                                }
+                                
+                                // 添加行内公式
+                                markdownContent += `- ${paramName}：$${formula}$\n`;
+                            }
+                        }
+                    });
+                    
+                    processedContent += markdownContent + '\n';
+                } else {
+                    // 如果不包含中文，保持原样
+                    processedContent += `${currentBlock}\n`;
+                }
+                
+                inSpecialBlock = false;
+                continue;
+            }
+            continue;
+        } else if (line.includes('$') && !inSpecialBlock) {
+            console.log('检测到可能的行内数学公式', line);
+            // 处理单行数学公式
+            let processedLine = line;
+            const matches = line.match(/\$[^\$]+\$/g);
+            if (matches) {
+                matches.forEach(match => {
+                    // 检查是否是有效的行内公式（前后都是$，且不是$$，且不包含HTML标签）
+                    if (match.startsWith('$') && 
+                        match.endsWith('$') && 
+                        !match.startsWith('$$')) {
+                        console.log('找到有效的行内数学公式:', match);
+                        processedLine += `${match}\n`
+                    } else {
+                        console.log('无效的行内数学公式格式:', match);
+                    }
+                });
+            }
+            processedContent += processedLine + '\n';
+            continue;
         }
-        continue;
-      }
-      
-      // 处理 markdown 代码块
-      if (line.trim().startsWith('```markdown')) {
-        inMarkdownBlock = true;
-        currentMarkdownBlock = '';
-        continue;
-      } else if (inMarkdownBlock && line === '```') {
-        inMarkdownBlock = false;
-        // 直接添加 markdown 内容，不包含代码块标记
-        processedContent += currentMarkdownBlock.trim() + '\n\n';
-        continue;
-      }
-      
-      // 收集代码块内容或添加普通行
-      if (inEchartsBlock) {
-        currentEchartsBlock += line + '\n';
-      } else if (inMarkdownBlock) {
-        currentMarkdownBlock += line + '\n';
-      } else {
-        processedContent += line + '\n';
-      }
+        
+        // 检查其他代码块的结束
+        if (inSpecialBlock && line === '```' && blockType !== 'math-block') {
+            inSpecialBlock = false;
+            
+            switch (blockType) {
+                case 'markdown':
+                    processedContent += currentBlock + '\n';
+                    break;
+                    
+                case 'latex':
+                    processedContent += currentBlock + '\n';
+                    break;
+                    
+                case 'yuml':
+                    processedContent += blockStartMarker + '\n' + currentBlock + '\n```\n';
+                    break;
+                    
+                case 'echarts':
+                    try {
+                        const jsonContent = currentBlock.trim();
+                        JSON.parse(jsonContent);
+                        processedContent += blockStartMarker + '\n' + currentBlock + '\n```\n';
+                    } catch (error) {
+                        console.error('echarts 解析失败:', error);
+                        processedContent += '> *数据正在加载中...*\n\n';
+                    }
+                    break;
+            }
+            continue;
+        }
+        
+        // 收集代码块内容或添加普通行
+        if (inSpecialBlock) {
+            currentBlock += line + '\n';
+        } else {
+            processedContent += line + '\n';
+        }
     }
     
     // 处理未闭合的代码块
-    if (inEchartsBlock) {
-      processedContent += '> *图表数据正在加载中...*\n\n';
-    } else if (inMarkdownBlock) {
-      processedContent += currentMarkdownBlock;
+    if (inSpecialBlock) {
+        processedContent += '> *内容正在加载中...*\n\n';
     }
     
     return processedContent;

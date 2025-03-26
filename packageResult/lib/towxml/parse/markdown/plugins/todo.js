@@ -41,15 +41,27 @@
                 if (isTodoItem(tokens, i)) {
                     todoify(tokens[i], state.Token);
                     attrSet(tokens[i-2], 'class', 'task-list-item' + (!disableCheckboxes ? ' enabled' : ''));
-                    attrSet(tokens[parentToken(tokens, i-2)], 'class', 'contains-task-list');
-
-                    tagPaired(parentToken(tokens, i-2)).tag = 'todogroup';
-                    tokens[parentToken(tokens, i-2)].tag = 'todogroup';
-
-                    tagPaired(i-2).tag = 'todolist';
-                    tokens[i-2].tag = 'todolist';
-                };
-            };
+                    
+                    let parentTokenIndex = parentToken(tokens, i-2);
+                    if (parentTokenIndex >= 0) {  // 确保找到了父元素
+                        attrSet(tokens[parentTokenIndex], 'class', 'contains-task-list');
+                        
+                        // 先检查是否找到了对应的配对标签
+                        let pairedParentToken = tagPaired(parentTokenIndex);
+                        let pairedListToken = tagPaired(i-2);
+                        
+                        if (pairedParentToken) {
+                            pairedParentToken.tag = 'todogroup';
+                            tokens[parentTokenIndex].tag = 'todogroup';
+                        }
+                        
+                        if (pairedListToken) {
+                            pairedListToken.tag = 'todolist';
+                            tokens[i-2].tag = 'todolist';
+                        }
+                    }
+                }
+            }
         });
     };
     

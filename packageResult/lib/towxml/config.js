@@ -1,15 +1,15 @@
 module.exports = {
     // LaTex公式、yuml解析服务架设参见 https://github.com/sbfkcel/markdown-server
 
-    // 数学公式解析API
-    latex:{
-        api:'http://towxml.vvadd.com/?tex'
-    },
+    // // 数学公式解析API（已经直接在源码调用云函数）
+    // latex:{
+    //     api:'http://towxml.vvadd.com/?tex'
+    // },
 
-    // yuml图解析APPI
-    yuml:{
-        api:'http://towxml.vvadd.com/?yuml'
-    },
+    // // yuml图解析APPI
+    // yuml:{
+    //     api:'http://towxml.vvadd.com/?yuml'
+    // },
 
     // markdown解析配置，保留需要的选项即可
     markdown:[

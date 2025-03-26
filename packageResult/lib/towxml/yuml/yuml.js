@@ -1,4 +1,3 @@
-const config = require('../config');
 Component({
 	options: {
 		styleIsolation: 'shared'
@@ -23,29 +22,48 @@ Component({
 		attached:function(){
 			const _ts = this;
 			let dataAttr = this.data.data.attrs;
-
-			// 设置公式图片
-			_ts.setData({
-				attr:{
-					src:`${config.yuml.api}=${dataAttr.value}&theme=${global._theme}`,
-					class:`${dataAttr.class}`
+			console.log('yuml 渲染开始:', dataAttr);
+			
+			wx.cloud.callFunction({
+				name: 'markdown-server',
+				data: {
+					yuml: dataAttr.value,
+					theme: global._theme
 				}
+			}).then(res => {
+				console.log('res', res);
+				// 确保 base64 字符串是有效的
+				if (res.result && res.result.body) {
+					const base64Data = res.result.body.trim(); // 移除可能的空白字符
+					_ts.setData({
+						attr:{
+							src: `data:image/svg+xml;base64,${base64Data}`,
+							class: dataAttr.class
+						}
+					});
+				} else {
+					console.error('返回的数据格式不正确:', res);
+				}
+			}).catch(err => {
+				console.error('YUML 渲染失败:', err);
 			});
 		}
 	},
 	methods: {
-		load:function(e){
+		load: function(e) {
+			console.log('图片加载成功:', e.detail);
 			const _ts = this;
-			// 公式图片加载完成则根据其图片大小、类型计算其显示的合适大小
-			let scale = 20,
-				w = e.detail.width / scale,
-				h = e.detail.height / scale;
+			// 直接使用图片的实际尺寸
 			_ts.setData({
 				size:{
-					w:w,
-					h:h
+					w: e.detail.width,
+					h: e.detail.height
 				}
 			});
+		},
+		handleImageError: function(e) {
+			console.error('图片加载失败:', e);
+			console.log('src:', this.data.attr.src);
 		}
 	}
 })
