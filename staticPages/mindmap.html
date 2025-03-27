@@ -22,7 +22,12 @@
   <script>
     window.markmap = {
       autoLoader: {
-        toolbar: true,  // 启用工具栏
+        toolbar: true,
+        manual: true,
+        onReady: () => {
+          // 在这里初始化 markmap
+          initMarkmap();
+        },
       },
     };
   </script>
@@ -31,7 +36,7 @@
   <div class="markmap">
     <script type="text/template" id="markdown-content"></script>
   </div>
-  <script src="https://cdn.jsdelivr.net/npm/markmap-autoloader@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/markmap-autoloader@0.15.6"></script>
   <script>
     // 定义Base64对象
     function Base64() {
@@ -91,7 +96,7 @@
       }
     }
 
-    function initMarkmap() {
+    async function initMarkmap() {
       try {
         // 从 URL 参数中获取 base64 编码的内容
         const base64Data = getQueryParam('data');
@@ -109,6 +114,9 @@
 
         // 设置 markdown 内容
         document.getElementById('markdown-content').textContent = markdown;
+        
+        // 直接调用渲染，因为此时已经确保库加载完成
+        window.markmap.autoLoader.renderAll();
 
         // 通知小程序加载成功
         if (window.wx && wx.miniProgram) {
@@ -128,8 +136,6 @@
         }
       }
     }
-
-    window.addEventListener('load', initMarkmap);
   </script>
 </body>
 </html>
