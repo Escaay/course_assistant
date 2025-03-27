@@ -1,4 +1,5 @@
 import towxml from '../../lib/towxml/index';
+import { base64Encode } from '../../../utils/base64';
 const app = getApp();
 
 Page({
@@ -71,26 +72,15 @@ Page({
       const pages = getCurrentPages();
       const currentPage = pages[pages.length - 1];
       
-      // 使用navigateTo而不是redirectTo，确保可以返回
       wx.navigateTo({
         url: `/packageResult/pages/mindmap/mindmap?url=${encodeURIComponent(this.data.mindmapUrl)}`,
-        events: {
-          // 监听页面返回事件
-          returnFromMindmap: function() {
-            console.log('从思维导图页面返回');
-          }
-        },
-        success: function(res) {
-          // 页面打开成功
-          console.log('思维导图页面打开成功');
-          
+        success: (res) => {
           // 通过eventChannel向被打开页面传送数据
-          // res.eventChannel.emit('acceptDataFromOpenerPage', { 
-          //   data: 'from result page',
-          //   mindmapUrl: this.data.mindmapUrl // 也可以通过事件通道传递URL
-          // });
+          res.eventChannel.emit('acceptDataFromOpenerPage', { 
+            markdown: this.data.markdownContent
+          });
         },
-        fail: function(err) {
+        fail: (err) => {
           console.error('打开思维导图页面失败:', err);
           wx.showToast({
             title: '打开思维导图失败',
@@ -109,119 +99,45 @@ Page({
   // 生成思维导图
   generateMindMap(markdownContent) {
     console.log('开始生成思维导图');
-    console.log('Markdown内容长度:', markdownContent ? markdownContent.length : 0);
     
-    if (!markdownContent) {
-      console.log('没有内容，不生成思维导图');
+    if (!markdownContent || markdownContent === '# 没有内容') {
+      console.log('没有有效内容，不生成思维导图');
       return;
     }
-    
-    this.setData({
-      isGeneratingMindMap: true
-    });
-    
-    // 生成HTML内容
-    const html = `
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="X-UA-Compatible" content="ie=edge">
-  <title>思维导图</title>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-    }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-    }
-    .markmap {
-      width: 100%;
-      height: 100vh;
-    }
-    .markmap > svg {
-      width: 100%;
-      height: 100%;
-    }
-  </style>
-</head>
-<body>
-  <div class="markmap">
-    <script type="text/template">
-${markdownContent}
-    </script>
-  </div>
-  <script src="https://cdn.jsdelivr.net/npm/markmap-autoloader@latest"></script>
-</body>
-</html>`;
 
-    // 生成唯一文件名
-    const fileName = `mindmap_${Date.now()}.html`;
-    
-    // 将HTML内容转换为ArrayBuffer
-    const fsm = wx.getFileSystemManager();
-    const filePath = `${wx.env.USER_DATA_PATH}/${fileName}`;
-    
+    this.setData({
+      isGeneratingMindMap: true,
+      disabledTabs: {1: false}
+    });
+
     try {
-      // 写入临时文件
-      fsm.writeFileSync(filePath, html, 'utf8');
+      // 先进行 URI 编码，再进行 Base64 编码
+      const encodedContent = encodeURIComponent(markdownContent);
+      const base64Content = base64Encode(encodedContent);
+      console.log('Base64 编码后的内容长度:', base64Content.length);
       
-      // 上传到云存储
-      wx.cloud.uploadFile({
-        cloudPath: fileName,
-        filePath: filePath,
-        success: res => {
-          console.log('上传成功', res);
-          
-          // 获取临时访问URL
-          wx.cloud.getTempFileURL({
-            fileList: [res.fileID],
-            success: result => {
-              console.log('获取临时URL成功', result);
-              
-              if (result.fileList && result.fileList.length > 0) {
-                const fileUrl = result.fileList[0].tempFileURL;
-                
-                this.setData({
-                  mindmapUrl: fileUrl,
-                  isGeneratingMindMap: false,
-                  disabledTabs: {1: false} // 启用思维导图标签
-                });
-                
-                console.log('思维导图标签已启用');
-              } else {
-                this.handleMindmapError('获取临时访问URL失败');
-              }
-            },
-            fail: err => {
-              console.error('获取临时URL失败', err);
-              this.handleMindmapError('获取临时访问URL失败');
-            }
-          });
-        },
-        fail: err => {
-          console.error('上传失败', err);
-          this.handleMindmapError('上传文件失败');
-        }
+      // 设置思维导图URL
+      const baseUrl = 'https://cloud1-6gvmnnngc2e558b1-1350435035.tcloudbaseapp.com/cloud-admin/mindmap.html';
+      const sign = '06a03f793911ec22f7bc418e071c0b29';
+      const t = '1743061510';
+      const mindmapUrl = `${baseUrl}?sign=${sign}&t=${t}&data=${base64Content}`;
+      
+      console.log('生成的 mindmapUrl 长度:', mindmapUrl.length);
+
+      this.setData({
+        mindmapUrl: mindmapUrl,
+        isGeneratingMindMap: false
       });
     } catch (error) {
-      console.error('生成思维导图失败', error);
-      this.handleMindmapError('生成思维导图失败');
+      console.error('生成思维导图URL失败:', error);
+      this.setData({
+        isGeneratingMindMap: false
+      });
+      wx.showToast({
+        title: '生成思维导图失败',
+        icon: 'none'
+      });
     }
-  },
-  
-  // 处理思维导图生成错误
-  handleMindmapError(errorMsg) {
-    wx.showToast({
-      title: errorMsg || '思维导图生成失败',
-      icon: 'none'
-    });
-    
-    this.setData({
-      isGeneratingMindMap: false
-    });
   },
   
   // 渲染 Markdown 内容
@@ -322,55 +238,9 @@ ${markdownContent}
             } else if (blockType === 'math-block') {
                 // 多行数学公式结束
                 currentBlock += '$$';  // 保留结束标记
-                
-                // 检查是否包含中文的数学公式
-                if (currentBlock.includes('\\text{')) {
-                    // 提取公式内容
-                    const formulaLines = currentBlock
-                        .replace(/\$\$/g, '') // 移除 $$
-                        .replace('\\boxed{', '') // 移除 boxed
-                        .replace('\\begin{aligned}', '') // 移除 aligned 开始
-                        .replace('\\end{aligned}', '') // 移除 aligned 结束
-                        .replace(/}$/, '') // 移除最后的 }
-                        .split('\\\\') // 按行分割
-                        .map(line => line.trim()) // 清理空白
-                        .filter(line => line); // 移除空行
-
-                    let markdownContent = '';
-                    
-                    formulaLines.forEach(line => {
-                        // 提取中文文本和公式部分
-                        const parts = line.split('=').map(part => part.trim());
-                        if (parts.length === 2) {
-                            // 提取参数名（中文部分）
-                            const paramMatch = parts[0].match(/\\text\{([^}]+)\}/);
-                            if (paramMatch) {
-                                const paramName = paramMatch[1];
-                                
-                                // 处理公式部分，移除所有中文
-                                let formula = parts[1]
-                                    .replace(/\\text\{[^}]+\}/g, '') // 移除所有 \text{...}
-                                    .replace(/（[^）]*）/g, '') // 移除中文括号及其内容
-                                    .trim();
-                                
-                                // 如果公式部分为空，用变量替代
-                                if (!formula.replace(/\s/g, '')) {
-                                    formula = 'x';
-                                }
-                                
-                                // 添加行内公式
-                                markdownContent += `- ${paramName}：$${formula}$\n`;
-                            }
-                        }
-                    });
-                    
-                    processedContent += markdownContent + '\n';
-                } else {
-                    // 如果不包含中文，保持原样
-                    processedContent += `${currentBlock}\n`;
-                }
-                
+                // console.log('多行数学公式结束，内容:', currentBlock)
                 inSpecialBlock = false;
+                processedContent += `${currentBlock}\n`;
                 continue;
             }
             continue;

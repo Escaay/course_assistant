@@ -17,7 +17,9 @@ Component({
 		size:{
 			w:0,
 			h:0
-		}
+		},
+		imageStyle: 'width:320px; height:240px;',  // 初始样式
+		isLoading: true  // 添加加载状态
 	},
 	lifetimes:{
 		attached:function(){
@@ -28,6 +30,7 @@ Component({
 			
 			if (!dataAttr || !dataAttr.value) {
 				console.error('LaTeX 公式数据无效:', dataAttr);
+				_ts.setData({ isLoading: false });
 				return;
 			}
 			
@@ -50,9 +53,11 @@ Component({
 					});
 				} else {
 					console.error('返回的数据格式不正确:', res);
+					_ts.setData({ isLoading: false });
 				}
 			}).catch(err => {
 				console.error('LaTeX 公式渲染失败:', err);
+				_ts.setData({ isLoading: false });
 			});
 		}
 	},
@@ -60,17 +65,17 @@ Component({
 		load: function(e) {
 			console.log('LaTeX 公式加载成功:', e.detail);
 			const _ts = this;
-			// 直接使用图片的实际尺寸
-			_ts.setData({
-				size:{
-					w: e.detail.width,
-					h: e.detail.height
-				}
-			});
+			if (e.detail.width && e.detail.height) {
+				_ts.setData({
+					imageStyle: `width:${e.detail.width}px; height:${e.detail.height}px;`,
+					isLoading: false  // 加载完成
+				});
+			}
 		},
 		handleImageError: function(e) {
 			console.error('LaTeX 公式加载失败:', e);
 			console.log('src:', this.data.attr.src);
+			this.setData({ isLoading: false });
 		}
 	}
 })

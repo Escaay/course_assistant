@@ -1,5 +1,8 @@
 <!-- 只有在URL不为空且没有加载错误时才显示web-view -->
-<web-view wx:if="{{url && !loadError}}" src="{{url}}"></web-view>
+<web-view 
+  src="{{url}}"
+  bindmessage="handleMessage"
+></web-view>
 
 <!-- 加载中提示 -->
 <view class="loading-container" wx:if="{{!url && !loadError}}">

@@ -1,0 +1,15 @@
+.yuml-loading {
+    text-align: center;
+    padding: 20px;
+    color: #999;
+    font-size: 14px;
+}
+
+.h2w__yumlBox {
+    width: 100%;
+    overflow: hidden;
+}
+
+.h2w__yumlView {
+    width: 100%;
+}

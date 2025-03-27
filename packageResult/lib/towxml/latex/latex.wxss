@@ -1,0 +1,21 @@
+.latex-loading {
+    text-align: center;
+    padding: 20px;
+    color: #999;
+    font-size: 14px;
+}
+
+.h2w__latexBox {
+    width: 100%;
+    overflow: hidden;
+}
+
+.h2w__latexView {
+    width: 100%;
+    white-space: nowrap;
+}
+
+.h2w__latexView image {
+    display: inline-block;
+    min-width: 100%;
+}

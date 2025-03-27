@@ -1,9 +1,10 @@
 <view class="h2w__yumlBox">
     <view class="h2w__yumlView">
+        <view wx:if="{{isLoading}}" class="yuml-loading">yuml图加载中......</view>
         <image 
             class="{{attr.class}}" 
             src="{{attr.src}}" 
-            style="width:320px; height:240px;" 
+            style="{{imageStyle}}; display: {{isLoading ? 'none' : 'block'}};"
             lazy-load="true" 
             mode="aspectFit"
             bindload="load"

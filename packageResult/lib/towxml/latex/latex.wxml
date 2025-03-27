@@ -1,1 +1,14 @@
-<image class="{{attrs.class}}" lazy-load="true" src="{{attrs.src}}" style="width:{{size.w}}em; height:{{size.h}}em;" bindload="load"></image>
+<view class="h2w__latexBox">
+    <scroll-view class="h2w__latexView" scroll-x enable-flex>
+        <view wx:if="{{isLoading}}" class="latex-loading">数学公式加载中......</view>
+        <image 
+            class="{{attr.class}}" 
+            src="{{attr.src}}" 
+            style="{{imageStyle}}; display: {{isLoading ? 'none' : 'block'}};"
+            lazy-load="true" 
+            mode="aspectFit"
+            bindload="load"
+            binderror="handleImageError">
+        </image>
+    </scroll-view>
+</view>

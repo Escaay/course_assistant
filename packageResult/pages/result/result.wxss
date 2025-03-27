@@ -10,7 +10,6 @@ page {
 .markdown-container {
   width: 100%; /* 设置为100%宽度 */
   padding: 30rpx;
-  padding-bottom: 150rpx;
   background-color: #fff;
   box-sizing: border-box;
   flex: 1;

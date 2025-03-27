@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>思维导图</title>
+  <style>
+    * { margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    .markmap {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+    }
+    .markmap > svg {
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+  <!-- 配置 markmap-autoloader -->
+  <script>
+    window.markmap = {
+      autoLoader: {
+        toolbar: true,  // 启用工具栏
+      },
+    };
+  </script>
+</head>
+<body>
+  <div class="markmap">
+    <script type="text/template" id="markdown-content"></script>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/markmap-autoloader@latest"></script>
+  <script>
+    // 定义Base64对象
+    function Base64() {
+      // Base64字符集
+      const base64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    
+      // 解码函数
+      this.decode = function (str) {
+        let result = '';
+        let i = 0;
+        while (i < str.length) {
+          let a = base64Chars.indexOf(str.charAt(i++));
+          let b = base64Chars.indexOf(str.charAt(i++));
+          let c = base64Chars.indexOf(str.charAt(i++));
+          let d = base64Chars.indexOf(str.charAt(i++));
+    
+          let a1 = (a << 2) | (b >> 4);
+          let a2 = ((b & 15) << 4) | (c >> 2);
+          let a3 = ((c & 3) << 6) | d;
+    
+          result += String.fromCharCode(a1);
+          if (c != 64) {
+            result += String.fromCharCode(a2);
+          }
+          if (d != 64) {
+            result += String.fromCharCode(a3);
+          }
+        }
+        return result;
+      }
+    }
+
+    // 实现Base64解密
+    function base64Decode(str) {
+      let base64 = new Base64();
+      return base64.decode(str);
+    }
+
+    function getQueryParam(name) {
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get(name);
+      } catch (error) {
+        console.error('Error getting query param:', error);
+        return null;
+      }
+    }
+
+    function base64ToText(base64) {
+      try {
+        // 先进行 Base64 解码，再进行 URI 解码
+        const decoded = base64Decode(base64);
+        return decodeURIComponent(decoded);
+      } catch (error) {
+        console.error('Error decoding base64:', error);
+        return null;
+      }
+    }
+
+    function initMarkmap() {
+      try {
+        // 从 URL 参数中获取 base64 编码的内容
+        const base64Data = getQueryParam('data');
+        if (!base64Data) {
+          throw new Error('No data provided');
+        }
+
+        // 解码 base64 内容
+        const markdown = base64ToText(base64Data);
+        if (!markdown) {
+          throw new Error('Failed to decode content');
+        }
+
+        console.log('解码后的内容:', markdown);
+
+        // 设置 markdown 内容
+        document.getElementById('markdown-content').textContent = markdown;
+
+        // 通知小程序加载成功
+        if (window.wx && wx.miniProgram) {
+          wx.miniProgram.postMessage({
+            data: { action: 'success' }
+          });
+        }
+      } catch(err) {
+        console.error('Error initializing markmap:', err);
+        if (window.wx && wx.miniProgram) {
+          wx.miniProgram.postMessage({
+            data: { 
+              action: 'error',
+              message: err.message
+            }
+          });
+        }
+      }
+    }
+
+    window.addEventListener('load', initMarkmap);
+  </script>
+</body>
+</html>
