@@ -6,6 +6,7 @@ cloudfunctions/convertToMarkdown/node_modules/
 cloudfunctions/generateMindmap/node_modules/
 cloudfunctions/cleanupFiles/node_modules/
 cloudfunctions/getUploadFiles/node_modules/
+cloudfunctions/cloudbase_auth/node_modules/
 
 # 忽略miniprogram下的node_modules
 miniprogram/node_modules/

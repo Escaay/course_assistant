@@ -2,8 +2,8 @@
 const cloud = require('wx-server-sdk');
 
 cloud.init({
-  env: "cloud1-6gvmnnngc2e558b1" // 使用您提供的云环境ID
-});
+  env: 'cloud1-0gys80m48da147a1'
+})
 
 // 引入PDF和Word解析库
 const pdfParse = require('pdf-parse');
@@ -12,8 +12,9 @@ const mammoth = require('mammoth');
 // 云函数入口函数
 exports.main = async (event, context) => {
   try {
+    console.log(123)
     const { fileIDs } = event;
-    
+    console.log(fileIDs)
     if (!fileIDs || !Array.isArray(fileIDs) || fileIDs.length === 0) {
       return {
         success: false,
@@ -26,8 +27,9 @@ exports.main = async (event, context) => {
     for (const fileID of fileIDs) {
       try {
         // 下载文件
+        console.log('fileID', fileID)
         const res = await cloud.downloadFile({
-          fileID: fileID,
+          fileID: 'cloud://cloud1-0gys80m48da147a1.636c-cloud1-0gys80m48da147a1-1304271127/uploads/1743332465288_本科毕业论文要求说明（仅供正文排版参考） - 副本.docx',
         });
         
         const buffer = res.fileContent;
@@ -39,8 +41,33 @@ exports.main = async (event, context) => {
         // 根据文件类型进行转换
         if (fileExt === 'pdf') {
           console.log(`开始处理PDF文件: ${fileName}`);
-          const pdfData = await pdfParse(buffer);
-          markdown = convertPdfToMarkdown(pdfData.text);
+          try {
+            // 验证 buffer 是否有效
+            if (!Buffer.isBuffer(buffer)) {
+              throw new Error('无效的文件内容');
+            }
+            console.log('PDF文件大小:', buffer.length, 'bytes');
+
+            // 添加 PDF 解析选项
+            const options = {
+              max: 0,  // 不限制页数
+              version: 'v2.0.550'  // 指定 pdf-parse 版本
+            };
+
+            const pdfData = await pdfParse(buffer, options).catch(err => {
+              console.error('PDF解析错误:', err);
+              throw new Error(`PDF解析失败: ${err.message}`);
+            });
+
+            if (!pdfData || !pdfData.text) {
+              throw new Error('PDF解析结果无效');
+            }
+
+            markdown = convertPdfToMarkdown(pdfData.text);
+          } catch (pdfError) {
+            console.error('PDF处理错误:', pdfError);
+            markdown = `PDF文件处理失败: ${pdfError.message}\n\n`;
+          }
         } else if (fileExt === 'doc' || fileExt === 'docx') {
           console.log(`开始处理Word文件: ${fileName}`);
           const result = await mammoth.extractRawText({ buffer });

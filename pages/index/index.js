@@ -18,11 +18,6 @@ Page({
     app.globalData.fileList = [];
     app.globalData.markdownContent = '';
     app.globalData.mindMapData = null;
-    
-    // 初始化云开发
-    wx.cloud.init({
-      env: "cloud1-6gvmnnngc2e558b1"
-    });
   },
 
   chooseFile() {
@@ -85,7 +80,7 @@ Page({
     app.globalData.fileList = newFileList;
   },
   
-  convertFiles() {
+  async convertFiles() {
     if (this.data.fileList.length === 0) {
       wx.showToast({
         title: '请先选择文件',
@@ -98,23 +93,34 @@ Page({
       isConverting: true
     });
     
-    // 上传文件到云存储
-    this.uploadFilesToCloud().then(fileIDs => {
-      // 调用云函数进行文件转换
-      return wx.cloud.callFunction({
+    try {
+      // 创建新的云实例
+      const c1 = new wx.cloud.Cloud({
+        resourceAppid: 'wx93739e7f65cff363',
+        resourceEnv: 'cloud1-0gys80m48da147a1',
+      });
+      
+      await c1.init();
+      console.log('云环境初始化成功');
+
+      // 使用初始化后的云实例上传文件
+      const fileIDs = await this.uploadFilesToCloud(c1);
+      console.log('上传的文件IDs类型:', typeof fileIDs, '内容:', fileIDs, '是否是数组:', Array.isArray(fileIDs));
+
+      // 使用同一个云实例调用云函数
+      const res = await c1.callFunction({
         name: 'convertToMarkdown',
         data: {
           fileIDs: fileIDs
         }
       });
-    }).then(res => {
+
       console.log('转换结果:', res);
       
       if (res.result && res.result.success) {
         const markdown = res.result.markdown;
         console.log('云函数返回的Markdown:', markdown);
         
-        // 保存Markdown内容
         this.setData({
           markdownContent: markdown,
           aiProcessing: true,
@@ -122,30 +128,146 @@ Page({
         });
         
         // 使用AI优化内容
-        this.processWithAI(markdown);
+        await this.processWithAI(markdown);
       } else {
         throw new Error(res.result.error || '转换失败');
       }
-    }).catch(err => {
+    } catch (err) {
       console.error('转换错误:', err);
       wx.showToast({
-        title: '转换失败: ' + err.message,
+        title: '转换失败: ' + (err.message || '未知错误'),
         icon: 'none'
       });
-      
+    } finally {
       this.setData({
         isConverting: false
       });
-    });
+    }
   },
   
   async processWithAI(markdown) {
     try {
-      // 使用小程序内置的AI能力
-      const res = await wx.cloud.extend.AI.bot.sendMessage({
+			var c1 = new wx.cloud.Cloud({
+				// 资源方 AppID
+				resourceAppid: 'wx93739e7f65cff363',
+				// 资源方环境 ID
+				resourceEnv: 'cloud1-0gys80m48da147a1',
+			  })
+    
+      // 跨账号调用，必须等待 init 完成
+      // init 过程中，资源方小程序对应环境下的 cloudbase_auth 函数会被调用，并需返回协议字段（见下）来确认允许访问、并可自定义安全规则
+      await c1.init()
+      // 创建模型实例
+      const model = c1.extend.AI.createModel("deepseek");
+      
+      // 构建系统消息和用户消息
+      const messages = [
+        {
+          role: "system", 
+          content: `你是一位AI Markdown优化大师，你的任务是对接收到的Markdown文本进行优化，使其结构清晰、重点突出并且美观易读。
+
+目标：
+- 提炼和总结内容，突出重点
+- 使用合适的标题和子标题组织内容
+- 通过加粗、斜体等方式强调关键点
+- 适当使用echarts图表（仅限柱状图、折线图、饼图）
+  - 图表必须使用\`\`\`echarts 和 \`\`\`包裹
+  - 示例格式:
+    // 柱状图示例
+    \`\`\`echarts
+    {
+      "title": {
+        "text": "示例柱状图"
+      },
+      "tooltip": {
+        "trigger": "axis"
+      },
+      "legend": {
+        "data": ["数据名称"]
+      },
+      "xAxis": {
+        "type": "category",
+        "data": ["A", "B", "C"]
+      },
+      "yAxis": {
+        "type": "value"
+      },
+      "series": [{
+        "name": "数据名称",
+        "data": [120, 200, 150],
+        "type": "bar"
+      }]
+    }
+    \`\`\`
+
+    // 饼图示例
+    \`\`\`echarts
+    {
+      "title": {
+        "text": "示例饼图",
+        "left": "center"
+      },
+      "tooltip": {
+        "trigger": "item",
+        "formatter": "{b}: {c} ({d}%)"
+      },
+      "legend": {
+        "orient": "vertical",
+        "left": "left"
+      },
+      "series": [{
+        "type": "pie",
+        "radius": "50%",
+        "data": [
+          { "value": 40, "name": "类别A" },
+          { "value": 30, "name": "类别B" },
+          { "value": 30, "name": "类别C" }
+        ]
+      }]
+    }
+    \`\`\`
+- 可以使用latex数学公式
+  - 行内公式使用单个$包裹
+  - 多行公式使用$$包裹，使用\\\\进行换行
+  - 公式中不含中文
+  - 示例格式:
+    $$
+    \\begin{aligned}
+    y &= x^2 \\\\
+    &= (a+b)^2 \\\\
+    &= a^2 + 2ab + b^2
+    \\end{aligned}
+    $$
+- 可以使用yuml图表示流程
+  - 必须使用\`\`\`yuml和\`\`\`包裹
+  - 需要包含类型声明,如// {type:class}
+  - 示例格式:
+    \`\`\`yuml
+    // {type:class}
+    [类A]->[类B]
+    [类B]->[类C]
+    \`\`\`
+
+注意：
+- 保持核心信息准确
+- 不要使用\`\`\`markdown包裹内容
+- 不要使用mermaid格式
+- 确保所有格式标签正确闭合
+- 所有图表必须使用正确的代码块格式
+- 多行数学公式必须正确换行
+- echarts配置尽量简洁，不需要height和option包装`
+        },
+        {
+          role: "user",
+          content: markdown
+        }
+      ];
+
+      // 调用模型
+      const res = await model.streamText({
         data: {
-          botId: 'bot-1e0396fa',
-          msg: markdown
+          model: "deepseek-r1",
+          messages: messages
         }
       });
       
@@ -154,17 +276,13 @@ Page({
       
       // 设置流式接收标志
       app.globalData.isStreamingMarkdown = true;
-      app.globalData.streamingComplete = false; // 确保初始状态为未完成
-      
-      // 初始化接收到的内容
+      app.globalData.streamingComplete = false;
       app.globalData.streamedMarkdown = '';
       
-      // 立即跳转到结果页面
-      console.log('跳转结果页面');
+      // 跳转到结果页面
       wx.navigateTo({
         url: '/packageResult/pages/result/result',
         success: () => {
-          // 跳转成功后，隐藏首页的loading状态
           this.setData({
             isConverting: false,
             aiProcessing: false
@@ -172,117 +290,80 @@ Page({
         }
       });
       
-      // 在后台继续接收数据
+      // 处理流式响应
       let fullContent = '';
       let lastUpdateTime = Date.now();
       
-      // 创建一个Promise来等待所有数据接收完成
       const processStream = new Promise(async (resolve, reject) => {
         try {
           for await (let event of res.eventStream) {
-            // 收到结束信号，终止循环
             if (event.data === '[DONE]') {
-              console.log('AI响应完成 - 收到[DONE]信号');
+              console.log('AI响应完成', fullContent);
               break;
             }
             
             try {
-              // 打印原始数据
-              // console.log('AI返回数据:', event.data);
-              
               const data = JSON.parse(event.data);
               
-              // 获取思维链内容（如果有）
-              const think = data.reasoning_content;
+              // 获取思维链内容
+              const think = data?.choices?.[0]?.delta?.reasoning_content;
               if (think) {
-                // console.log('AI思维链:', think);
+                // console.log('思维链:', think);
               }
               
-              // 获取输出内容
-              const content = data.content;
-              if (content) {
-                // console.log('AI内容片段:', content);
-                fullContent += content;
-                
-                // 更新全局变量中的流式内容
+              // 获取生成的文本内容
+              const text = data?.choices?.[0]?.delta?.content;
+              if (text) {
+                fullContent += text;
                 app.globalData.markdownContent = fullContent;
                 app.globalData.streamedMarkdown = fullContent;
-                // console.log('当前累积内容长度:', fullContent.length);
                 lastUpdateTime = Date.now();
               }
             } catch (parseError) {
               console.error('解析事件数据失败:', parseError);
-              // 继续处理下一个事件
             }
           }
-          
-          // 所有数据接收完成
-          console.log('事件流处理完成');
           resolve(fullContent);
         } catch (error) {
-          console.error('处理事件流时出错:', error);
           reject(error);
         }
       });
       
-      // 设置一个超时检查，确保在没有新数据时也能正确完成
+      // 超时检查
       const timeoutCheck = () => {
         const now = Date.now();
-        const timeSinceLastUpdate = now - lastUpdateTime;
-        
-        // 如果超过10秒没有新数据，认为生成已完成
-        if (timeSinceLastUpdate > 60000) {
-          console.log('超过60秒没有新数据，认为生成已完成');
+        if (now - lastUpdateTime > 60000) {
           app.globalData.markdownContent = fullContent;
           app.globalData.isStreamingMarkdown = false;
           app.globalData.streamingComplete = true;
           return;
         }
         
-        // 如果还在接收数据，继续检查
         if (!app.globalData.streamingComplete) {
           setTimeout(timeoutCheck, 2000);
         }
       };
       
-      // 启动超时检查
       setTimeout(timeoutCheck, 2000);
       
       try {
-        // 等待所有数据接收完成
         fullContent = await processStream;
-        
-        console.log('AI完整响应:', fullContent);
-        
-        // AI处理完成
         app.globalData.markdownContent = fullContent;
         app.globalData.isStreamingMarkdown = false;
         app.globalData.streamingComplete = true;
-        
-        console.log('流式生成完成，已设置streamingComplete=true');
       } catch (streamError) {
         console.error('处理流式响应失败:', streamError);
-        
-        // 如果处理失败但已有部分内容，使用已接收的内容
-        if (fullContent) {
-          app.globalData.markdownContent = fullContent;
-        } else {
-          app.globalData.markdownContent = markdown;
-        }
-        
+        app.globalData.markdownContent = fullContent || markdown;
         app.globalData.isStreamingMarkdown = false;
         app.globalData.streamingComplete = true;
       }
       
     } catch (error) {
       console.error('AI处理失败:', error);
-      
-      // 如果AI处理失败，使用原始Markdown
       app.globalData.markdownContent = markdown;
       app.globalData.isStreamingMarkdown = false;
       app.globalData.streamingComplete = true;
       
-      // 如果用户还在首页，显示错误提示
       if (getCurrentPages().slice(-1)[0].route === 'pages/index/index') {
         this.setData({
           isConverting: false,
@@ -298,25 +379,28 @@ Page({
     }
   },
   
-  uploadFilesToCloud() {
-    return new Promise((resolve, reject) => {
-      const fileList = this.data.fileList;
-      const uploadPromises = fileList.map(file => {
-        return wx.cloud.uploadFile({
-          cloudPath: `uploads/${new Date().getTime()}_${file.originalName}`,
-          filePath: file.path
+  async uploadFilesToCloud(cloudInstance) {
+    if (!this.data.fileList || this.data.fileList.length === 0) {
+      throw new Error('文件列表为空');
+    }
+
+    const uploadPromises = this.data.fileList.map(file => {
+      return cloudInstance.uploadFile({
+        cloudPath: `uploads/${new Date().getTime()}_${file.originalName}`,
+        filePath: file.path
+      }).catch(error => {
+        console.error(`文件 ${file.originalName} 上传失败:`, error);
+        wx.showToast({
+          title: `${file.originalName} 上传失败: ${error.errMsg || '未知错误'}`,
+          icon: 'none',
+          duration: 3000
         });
+        throw error;
       });
-      
-      Promise.all(uploadPromises)
-        .then(results => {
-          const fileIDs = results.map(res => res.fileID);
-          resolve(fileIDs);
-        })
-        .catch(err => {
-          reject(err);
-        });
     });
+
+    const results = await Promise.all(uploadPromises);
+    return results.map(res => res.fileID);
   },
   
   generateMindMapData(markdown) {

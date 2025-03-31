@@ -22,7 +22,7 @@ Component({
 		isLoading: true  // 添加加载状态
 	},
 	lifetimes:{
-		attached:function(){
+		attached: async function(){
 			const _ts = this;
 			let dataAttr = this.data.data.attrs;
 			console.log('LaTeX 公式渲染开始, data:', this.data.data);
@@ -33,8 +33,17 @@ Component({
 				_ts.setData({ isLoading: false });
 				return;
 			}
-			
-			wx.cloud.callFunction({
+			var c1 = new wx.cloud.Cloud({
+				// 资源方 AppID
+				resourceAppid: 'wx93739e7f65cff363',
+				// 资源方环境 ID
+				resourceEnv: 'cloud1-0gys80m48da147a1',
+			  })
+			  
+			  // 跨账号调用，必须等待 init 完成
+			  // init 过程中，资源方小程序对应环境下的 cloudbase_auth 函数会被调用，并需返回协议字段（见下）来确认允许访问、并可自定义安全规则
+			await c1.init()
+			c1.callFunction({
 				name: 'markdown-server',
 				data: {
 					tex: dataAttr.value,

@@ -18,7 +18,9 @@ Page({
     lastScrollTop: 0, // 记录最后一次滚动位置
     mindmapSvgUrl: '', // 存储思维导图 SVG URL
     mindmapHtml: null, // 存储思维导图 HTML 内容
-    isPageDestroyed: false
+    isPageDestroyed: false,
+    mindmapSvg: '', // 存储思维导图SVG
+    mindmapImage: '', // 存储思维导图图片 URL
   },
   
   onLoad() {
@@ -97,13 +99,8 @@ Page({
   },
   
   // 生成思维导图
-  generateMindMap(markdownContent) {
-    console.log('开始生成思维导图');
-    
-    if (!markdownContent || markdownContent === '# 没有内容') {
-      console.log('没有有效内容，不生成思维导图');
-      return;
-    }
+  async generateMindMap(markdownContent) {
+    if (!markdownContent || markdownContent === '# 没有内容') return;
 
     this.setData({
       isGeneratingMindMap: true,
@@ -111,25 +108,30 @@ Page({
     });
 
     try {
-      // 先进行 URI 编码，再进行 Base64 编码
-      const encodedContent = encodeURIComponent(markdownContent);
-      const base64Content = base64Encode(encodedContent);
-      console.log('Base64 编码后的内容长度:', base64Content.length);
+      var c1 = new wx.cloud.Cloud({
+        resourceAppid: 'wx93739e7f65cff363',
+        resourceEnv: 'cloud1-0gys80m48da147a1',
+      });
       
-      // 设置思维导图URL
-      const baseUrl = 'https://cloud1-6gvmnnngc2e558b1-1350435035.tcloudbaseapp.com/cloud-admin/mindmap.html';
-      const sign = '06a03f793911ec22f7bc418e071c0b29';
-      const t = '1743061510';
-      const mindmapUrl = `${baseUrl}?sign=${sign}&t=${t}&data=${base64Content}`;
-      
-      console.log('生成的 mindmapUrl 长度:', mindmapUrl.length);
+      await c1.init();
+      const result = await c1.callFunction({
+        name: 'generateMindmap',
+        data: { content: markdownContent }
+      });
+
+      if (result.result.error) {
+        throw new Error(result.result.error);
+      }
+
+      // 添加 data URL 前缀
+      const imageUrl = 'data:image/svg+xml;base64,' + result.result.image;
 
       this.setData({
-        mindmapUrl: mindmapUrl,
+        mindmapImage: imageUrl,
         isGeneratingMindMap: false
       });
     } catch (error) {
-      console.error('生成思维导图URL失败:', error);
+      console.error('生成思维导图失败:', error);
       this.setData({
         isGeneratingMindMap: false
       });
@@ -178,7 +180,6 @@ Page({
         article: article,
         markdownContent: content
       });
-      console.log('content', article)
     } catch (error) {
       console.error('解析 Markdown 失败:', error);
       // 出错时显示原始内容
@@ -245,7 +246,6 @@ Page({
             }
             continue;
         } else if (line.includes('$') && !inSpecialBlock) {
-            console.log('检测到可能的行内数学公式', line);
             // 处理单行数学公式
             let processedLine = line;
             const matches = line.match(/\$[^\$]+\$/g);
@@ -255,7 +255,6 @@ Page({
                     if (match.startsWith('$') && 
                         match.endsWith('$') && 
                         !match.startsWith('$$')) {
-                        console.log('找到有效的行内数学公式:', match);
                         processedLine += `${match}\n`
                     } else {
                         console.log('无效的行内数学公式格式:', match);
@@ -527,10 +526,10 @@ Page({
   
   // 预览思维导图
   previewMindmap: function() {
-    if (this.data.mindmapSvgUrl) {
+    if (this.data.mindmapImage) {
       wx.previewImage({
-        urls: [this.data.mindmapSvgUrl],
-        current: this.data.mindmapSvgUrl
+        urls: [this.data.mindmapImage],
+        current: this.data.mindmapImage
       });
     }
   },
@@ -576,6 +575,22 @@ Page({
         app.globalData.isStreamingMarkdown = false;
       }
     }
-  }
+  },
+  
+  // 添加重新生成方法
+  regenerateMindmap: function() {
+    if (this.data.isGeneratingMindMap) return;
+    
+    // 清空现有的思维导图
+    this.setData({
+      mindmapImage: '',
+      isGeneratingMindMap: true
+    });
+    
+    // 重新生成思维导图
+    if (this.data.markdownContent) {
+      this.generateMindMap(this.data.markdownContent);
+    }
+  },
 });
 

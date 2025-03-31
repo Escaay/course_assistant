@@ -16,7 +16,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "markmap-lib": "^0.16.0"
+    "markmap-lib": "^0.16.0",
+    "wx-server-sdk": "^3.0.1"
   },
   "devDependencies": {
     "miniprogram-api-typings": "^3.9.1"

@@ -44,13 +44,26 @@
   <!-- 思维导图标签页 -->
   <view class="mindmap-container" style="display: {{activeTab === 1 ? 'block' : 'none'}}">
     <!-- 思维导图加载状态 -->
-    <view class="mindmap-loading" wx:if="{{!mindmapUrl}}">
+    <view class="mindmap-loading" wx:if="{{isGeneratingMindMap}}">
       <view class="loading-dots">
         <view class="dot"></view>
         <view class="dot"></view>
         <view class="dot"></view>
       </view>
-      <text>{{isGeneratingMindMap ? '正在生成思维导图...' : '思维导图加载失败'}}</text>
+      <text>正在生成思维导图...</text>
+    </view>
+    <image 
+      wx:else 
+      src="{{mindmapImage}}" 
+      mode="aspectFit" 
+      class="mindmap-image"
+      bindtap="previewMindmap"
+    ></image>
+    
+    <!-- 添加重新生成按钮 -->
+    <view class="regenerate-btn" bindtap="regenerateMindmap" wx:if="{{!isGeneratingMindMap}}">
+      <view class="regenerate-icon"></view>
+      <text>重新生成</text>
     </view>
   </view>
 </view>
