@@ -13,7 +13,7 @@ Page({
     activeTab: 0,
     mindmapUrl: '', // 思维导图 WebView URL
     isGeneratingMindMap: false, // 是否正在生成思维导图
-    disabledTabs: {1: true}, // 默认禁用思维导图标签
+    disabledTabs: {}, // 确保没有禁用任何标签
     isAutoScrolling: false, // 标记是否正在自动滚动
     lastScrollTop: 0, // 记录最后一次滚动位置
     mindmapSvgUrl: '', // 存储思维导图 SVG URL
@@ -36,7 +36,9 @@ Page({
       // 流式接收模式
       this.setData({
         isStreaming: true,
-        markdownContent: ''
+        markdownContent: '',
+        isGeneratingMindMap: true, // 在流式接收开始时就设置思维导图生成状态
+        disabledTabs: {} // 确保没有禁用任何标签
       });
       
       // 开始轮询获取流式内容
@@ -61,12 +63,19 @@ Page({
   },
   
   onTabChange: function(e) {
-    console.log('tabchange')
+    console.log('tabchange');
     const index = parseInt(e.currentTarget.dataset.index);
     
-    // 如果标签被禁用，则不切换
-    if (this.data.disabledTabs[index]) {
-      return;
+    // 如果切换到思维导图标签，设置用户已交互标志，阻止自动滚动
+    if (index === 1) {
+      this.setData({ 
+        userHasInteracted: true 
+      });
+      
+      // 如果还没有开始生成思维导图，且有内容，则开始生成
+      if (!this.data.isGeneratingMindMap && !this.data.mindmapImage && this.data.markdownContent) {
+        this.generateMindMap(this.data.markdownContent);
+      }
     }
     
     if (index === 1 && this.data.mindmapUrl) {
@@ -93,6 +102,7 @@ Page({
       return;
     }
     
+    // 直接设置活动标签，不检查禁用状态
     this.setData({
       activeTab: index
     });
@@ -104,17 +114,17 @@ Page({
 
     this.setData({
       isGeneratingMindMap: true,
-      disabledTabs: {1: true} // 生成过程中禁用思维导图标签
+      // 不再禁用思维导图标签
+      // disabledTabs: {1: true} // 移除这一行
     });
 
     try {
       // 获取Web函数URL
-      // 请替换为您的实际URL
       const functionUrl = 'https://1350435035-3t9bmfv4tb.ap-guangzhou.tencentscf.com/generate-mindmap';
       
       console.log('调用腾讯云Web函数生成思维导图...');
       
-      // 使用wx.request调用Web函数
+      // 使用wx.request调用Web函数，增加timeout参数
       const response = await new Promise((resolve, reject) => {
         wx.request({
           url: functionUrl,
@@ -125,6 +135,7 @@ Page({
           header: {
             'Content-Type': 'application/json'
           },
+          timeout: 120000, // 设置为120秒
           success: res => resolve(res),
           fail: err => reject(err)
         });
@@ -152,7 +163,7 @@ Page({
         this.setData({
           mindmapImage: imageUrl,
           isGeneratingMindMap: false,
-          disabledTabs: {1: false} // 生成完成后启用思维导图标签
+          disabledTabs: {1: false} // 确保思维导图标签启用
         });
         
         console.log('思维导图生成成功');
@@ -163,7 +174,8 @@ Page({
       console.error('生成思维导图失败:', error);
       this.setData({
         isGeneratingMindMap: false,
-        disabledTabs: {1: true} // 生成失败时保持禁用状态
+        // 即使生成失败也不禁用标签
+        disabledTabs: {1: false}
       });
       wx.showToast({
         title: '生成思维导图失败',
@@ -380,8 +392,8 @@ Page({
             // 使用 towxml 渲染更新的内容
             this.renderMarkdown(latestContent);
             
-            // 如果用户没有交互，则自动滚动到底部
-            if (!this.data.userHasInteracted) {
+            // 如果用户没有交互且当前在文档标签页，则自动滚动到底部
+            if (!this.data.userHasInteracted && this.data.activeTab === 0) {
               this.autoScrollToBottom();
             }
             

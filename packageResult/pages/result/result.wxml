@@ -43,8 +43,8 @@
   
   <!-- 思维导图标签页 -->
   <view class="mindmap-container" style="display: {{activeTab === 1 ? 'block' : 'none'}}">
-    <!-- 思维导图加载状态 -->
-    <view class="mindmap-loading" wx:if="{{isGeneratingMindMap}}">
+    <!-- 思维导图加载状态 - 修改条件，在流式接收或生成过程中都显示 -->
+    <view class="mindmap-loading" wx:if="{{isGeneratingMindMap || (isStreaming && !mindmapImage)}}">
       <view class="loading-dots">
         <view class="dot"></view>
         <view class="dot"></view>
@@ -52,6 +52,7 @@
       </view>
       <text>正在生成思维导图...</text>
     </view>
+    
     <image 
       wx:else 
       src="{{mindmapImage}}" 
@@ -62,14 +63,14 @@
     ></image>
     
     <!-- 删除重新生成按钮，添加保存图片按钮 -->
-    <view class="save-image-btn" bindtap="saveMindmapImage" wx:if="{{!isGeneratingMindMap}}">
+    <view class="save-image-btn" bindtap="saveMindmapImage" wx:if="{{mindmapImage}}">
       <view class="save-image-icon"></view>
       <text>免费保存</text>
     </view>
   </view>
 </view>
 
-<!-- 底部操作按钮 -->
+<!-- 底部操作按钮
 <view class="action-buttons">
   <button 
     class="action-button primary"
@@ -86,4 +87,4 @@
     <view class="button-icon save-icon"></view>
     <text>保存文件</text>
   </button>
-</view>
+</view> -->
