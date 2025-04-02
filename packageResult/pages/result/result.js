@@ -123,13 +123,18 @@ Page({
         throw new Error(result.result.error);
       }
 
-      // 添加 data URL 前缀
-      const imageUrl = 'data:image/svg+xml;base64,' + result.result.image;
+      // 处理返回的图片数据
+      if (result.result.image) {
+        // 添加 data URL 前缀 - 根据实际返回的图片格式调整
+        const imageUrl = 'data:image/png;base64,' + result.result.image;
 
-      this.setData({
-        mindmapImage: imageUrl,
-        isGeneratingMindMap: false
-      });
+        this.setData({
+          mindmapImage: imageUrl,
+          isGeneratingMindMap: false
+        });
+      } else {
+        throw new Error('未返回图片数据');
+      }
     } catch (error) {
       console.error('生成思维导图失败:', error);
       this.setData({

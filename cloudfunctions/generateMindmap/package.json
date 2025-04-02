@@ -10,6 +10,8 @@
   "license": "ISC",
   "dependencies": {
     "markmap-lib": "0.11.6",
+    "markmap-render": "^0.18.10",
+    "node-html-to-image": "^5.0.0",
     "wx-server-sdk": "latest"
   }
 }

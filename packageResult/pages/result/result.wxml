@@ -58,6 +58,7 @@
       mode="aspectFit" 
       class="mindmap-image"
       bindtap="previewMindmap"
+      show-menu-by-longpress="true"
     ></image>
     
     <!-- 添加重新生成按钮 -->

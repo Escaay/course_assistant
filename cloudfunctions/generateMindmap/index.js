@@ -1,19 +1,10 @@
-// 云函数 convertMarkdownToImage/index.js
+// 云函数 generateMindmap/index.js
 const cloud = require('wx-server-sdk');
 const { Transformer } = require('markmap-lib');
+const { fillTemplate } = require('markmap-render');
+const nodeHtmlToImage = require('node-html-to-image');
 
 cloud.init({ env: "cloud1-0gys80m48da147a1" });
-
-// 定义颜色数组
-const COLORS = [
-  '#2196f3', // 蓝色
-  '#4caf50', // 绿色
-  '#ff9800', // 橙色
-  '#f44336', // 红色
-  '#9c27b0', // 紫色
-  '#00bcd4', // 青色
-  '#e91e63'  // 粉色
-];
 
 exports.main = async (event) => {
   try {
@@ -22,28 +13,54 @@ exports.main = async (event) => {
     }
 
     const transformer = new Transformer();
-    const { root } = transformer.transform(event.content);
+    const { root, features } = transformer.transform(event.content);
+    const assets = transformer.getUsedAssets(features);
     
     console.log('转换后的数据:', JSON.stringify(root, null, 2));
 
-    const width = 2000; // 增加宽度
-    const height = 1600; // 增加高度
-    const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+    // 使用 fillTemplate 生成 HTML
+    const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <script src="https://cdn.jsdelivr.net/npm/d3@6"></script>
+      <script src="https://cdn.jsdelivr.net/npm/markmap-view@0.2.7"></script>
       <style>
-        .markmap-node { cursor: pointer; }
-        .markmap-node-circle { stroke-width: 1.5px; }
-        .markmap-node-text { font: 300 14px/20px sans-serif; }
-        .markmap-link { fill: none; stroke-width: 1.5px; }
-        .markmap-node-text tspan { font: 300 14px/20px sans-serif; }
-        .markmap-node-text code { font-family: monospace; }
-        .markmap-node-text strong { font-weight: 500; }
+        body, #markmap {
+          width: 2400px;
+          height: 1800px;
+          margin: 0;
+          overflow: hidden;
+        }
       </style>
-      <g transform="translate(60,${height/2})">${generateNodes(root, width, height)}</g>
-    </svg>`;
+    </head>
+    <body>
+      <svg id="markmap" style="width: 100%; height: 100%"></svg>
+      <script>
+        const data = ${JSON.stringify(root)};
+        const { Markmap } = window.markmap;
+        const mm = Markmap.create('#markmap', {
+          duration: 0,
+          maxInitialScale: 5,
+        }, data);
+      </script>
+    </body>
+    </html>
+    `;
 
+    // 使用 nodeHtmlToImage 生成图片
+    const image = await nodeHtmlToImage({
+      html,
+      waitUntil: 'networkidle0',
+      puppeteerArgs: {
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+      }
+    });
+    
     return {
-      image: Buffer.from(svg).toString('base64')
+      image: image.toString('base64')
     };
   } catch (err) {
     console.error('错误:', err);
