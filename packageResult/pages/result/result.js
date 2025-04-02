@@ -104,41 +104,66 @@ Page({
 
     this.setData({
       isGeneratingMindMap: true,
-      disabledTabs: {1: false}
+      disabledTabs: {1: true} // 生成过程中禁用思维导图标签
     });
 
     try {
-      var c1 = new wx.cloud.Cloud({
-        resourceAppid: 'wx93739e7f65cff363',
-        resourceEnv: 'cloud1-0gys80m48da147a1',
+      // 获取Web函数URL
+      // 请替换为您的实际URL
+      const functionUrl = 'https://1350435035-3t9bmfv4tb.ap-guangzhou.tencentscf.com/generate-mindmap';
+      
+      console.log('调用腾讯云Web函数生成思维导图...');
+      
+      // 使用wx.request调用Web函数
+      const response = await new Promise((resolve, reject) => {
+        wx.request({
+          url: functionUrl,
+          method: 'POST',
+          data: {
+            content: markdownContent
+          },
+          header: {
+            'Content-Type': 'application/json'
+          },
+          success: res => resolve(res),
+          fail: err => reject(err)
+        });
       });
       
-      await c1.init();
-      const result = await c1.callFunction({
-        name: 'generateMindmap',
-        data: { content: markdownContent }
-      });
-
-      if (result.result.error) {
-        throw new Error(result.result.error);
+      console.log('Web函数返回结果:', response);
+      
+      if (response.statusCode !== 200) {
+        throw new Error(`请求失败，状态码: ${response.statusCode}`);
+      }
+      
+      const result = response.data;
+      
+      if (result.error) {
+        throw new Error(result.error);
       }
 
       // 处理返回的图片数据
-      if (result.result.image) {
-        // 添加 data URL 前缀 - 根据实际返回的图片格式调整
-        const imageUrl = 'data:image/png;base64,' + result.result.image;
-
+      if (result.image) {
+        console.log('图片数据长度:', result.image.length);
+        
+        // 直接使用Base64 URL
+        const imageUrl = 'data:image/png;base64,' + result.image;
+        
         this.setData({
           mindmapImage: imageUrl,
-          isGeneratingMindMap: false
+          isGeneratingMindMap: false,
+          disabledTabs: {1: false} // 生成完成后启用思维导图标签
         });
+        
+        console.log('思维导图生成成功');
       } else {
         throw new Error('未返回图片数据');
       }
     } catch (error) {
       console.error('生成思维导图失败:', error);
       this.setData({
-        isGeneratingMindMap: false
+        isGeneratingMindMap: false,
+        disabledTabs: {1: true} // 生成失败时保持禁用状态
       });
       wx.showToast({
         title: '生成思维导图失败',
@@ -596,6 +621,74 @@ Page({
     if (this.data.markdownContent) {
       this.generateMindMap(this.data.markdownContent);
     }
+  },
+  
+  // 保存思维导图图片
+  saveMindmapImage: function() {
+    if (!this.data.mindmapImage) {
+      wx.showToast({
+        title: '没有可保存的图片',
+        icon: 'none'
+      });
+      return;
+    }
+    
+    wx.showLoading({
+      title: '保存中...',
+    });
+    
+    // 获取临时文件路径
+    wx.getFileSystemManager().writeFile({
+      filePath: `${wx.env.USER_DATA_PATH}/mindmap_temp.png`,
+      data: this.data.mindmapImage.replace(/^data:image\/\w+;base64,/, ""),
+      encoding: 'base64',
+      success: (res) => {
+        // 保存图片到相册
+        wx.saveImageToPhotosAlbum({
+          filePath: `${wx.env.USER_DATA_PATH}/mindmap_temp.png`,
+          success: () => {
+            wx.hideLoading();
+            wx.showToast({
+              title: '已保存到相册',
+              icon: 'success'
+            });
+          },
+          fail: (err) => {
+            wx.hideLoading();
+            console.error('保存到相册失败:', err);
+            if (err.errMsg.indexOf('auth deny') >= 0) {
+              wx.showModal({
+                title: '提示',
+                content: '需要您授权保存图片到相册',
+                confirmText: '去授权',
+                success: (res) => {
+                  if (res.confirm) {
+                    wx.openSetting({
+                      success: (settingRes) => {
+                        console.log('设置结果:', settingRes);
+                      }
+                    });
+                  }
+                }
+              });
+            } else {
+              wx.showToast({
+                title: '保存失败',
+                icon: 'none'
+              });
+            }
+          }
+        });
+      },
+      fail: (err) => {
+        wx.hideLoading();
+        console.error('写入临时文件失败:', err);
+        wx.showToast({
+          title: '保存失败',
+          icon: 'none'
+        });
+      }
+    });
   },
 });
 

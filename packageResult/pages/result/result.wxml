@@ -61,10 +61,10 @@
       show-menu-by-longpress="true"
     ></image>
     
-    <!-- 添加重新生成按钮 -->
-    <view class="regenerate-btn" bindtap="regenerateMindmap" wx:if="{{!isGeneratingMindMap}}">
-      <view class="regenerate-icon"></view>
-      <text>重新生成</text>
+    <!-- 删除重新生成按钮，添加保存图片按钮 -->
+    <view class="save-image-btn" bindtap="saveMindmapImage" wx:if="{{!isGeneratingMindMap}}">
+      <view class="save-image-icon"></view>
+      <text>免费保存</text>
     </view>
   </view>
 </view>

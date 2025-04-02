@@ -1,0 +1,15 @@
+{
+  "name": "generateMindmap",
+  "version": "1.0.0",
+  "description": "Generate mindmap image from markdown",
+  "main": "index.js",
+  "dependencies": {
+    "@sparticuz/chromium": "^133.0.0",
+    "body-parser": "^1.19.0",
+    "express": "^4.17.1",
+    "jimp": "^1.6.0",
+    "markmap-lib": "^0.14.4",
+    "node-html-to-image": "^3.3.0",
+    "puppeteer-core": "^24.5.0"
+  }
+}
