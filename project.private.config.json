@@ -3,7 +3,7 @@
   "projectname": "couse_assistant",
   "setting": {
     "compileHotReLoad": true,
-    "urlCheck": false
+    "urlCheck": true
   },
   "condition": {
     "miniprogram": {
