@@ -220,7 +220,7 @@ Page({
       // 更新数据，触发视图更新
       this.setData({
         article: article,
-        markdownContent: content
+        markdownContent: content  // 确保这里更新为原始内容，而不是处理后的内容
       });
     } catch (error) {
       console.error('解析 Markdown 失败:', error);
@@ -412,6 +412,16 @@ Page({
         // 检查是否已经完成流式接收
         if (app.globalData.streamingComplete) {
           console.log('全局数据标记流式接收完成');
+          
+          // 在标记完成时，确保使用全局最新内容
+          if (latestContent) {
+            console.log('流式接收完成，确保使用全局最新内容');
+            this.setData({
+              markdownContent: latestContent
+            });
+            this.renderMarkdown(latestContent);
+          }
+          
           this.setData({
             streamingComplete: true,
             isStreaming: false
@@ -419,9 +429,10 @@ Page({
           clearInterval(this.pollingTimer);
           
           // 流式接收完成后，立即生成思维导图
-          if (this.data.markdownContent) {
+          if (latestContent) {
+            console.log('latestContent1', latestContent)
             console.log('流式接收完成，立即生成思维导图');
-            this.generateMindMap(this.data.markdownContent);
+            this.generateMindMap(latestContent);
           }
           return;
         }
@@ -429,6 +440,15 @@ Page({
         // 如果已开始计数且3秒内没有新数据，则认为流式接收已完成
         if (hasStartedCounting && noUpdateCount >= maxNoUpdateCount) {
           console.log('3秒内没有新数据，认为流式接收已完成');
+          
+          // 在标记完成时，确保使用全局最新内容
+          if (latestContent) {
+            console.log('流式接收完成，确保使用全局最新内容');
+            this.setData({
+              markdownContent: latestContent
+            });
+            this.renderMarkdown(latestContent);
+          }
           
           this.setData({
             streamingComplete: true,
@@ -441,9 +461,9 @@ Page({
           clearInterval(this.pollingTimer);
           
           // 流式接收完成后，立即生成思维导图
-          if (this.data.markdownContent) {
+          if (latestContent) {
             console.log('流式接收完成，立即生成思维导图');
-            this.generateMindMap(this.data.markdownContent);
+            this.generateMindMap(latestContent);
           }
         }
       });
@@ -498,8 +518,12 @@ Page({
   },
   
   copyContent: function() {
+    // 确保使用最新的全局数据
+    const latestContent = app.globalData.markdownContent || this.data.markdownContent;
+    console.log('copyContent', app.globalData.markdownContent, this.data.markdownContent)
+    
     wx.setClipboardData({
-      data: this.data.markdownContent,
+      data: latestContent,
       success: function() {
         wx.showToast({
           title: '内容已复制',
@@ -705,7 +729,11 @@ Page({
   
   // 复制为Markdown
   copyAsMarkdown: function() {
-    if (!this.data.markdownContent) {
+    // 确保使用最新的全局数据
+    const latestContent = app.globalData.markdownContent || this.data.markdownContent;
+    console.log('copyContent', app.globalData.markdownContent, this.data.markdownContent)
+    
+    if (!latestContent) {
       wx.showToast({
         title: '没有可复制的内容',
         icon: 'none'
@@ -714,7 +742,7 @@ Page({
     }
     
     wx.setClipboardData({
-      data: this.data.markdownContent,
+      data: latestContent,
       success: function() {
         wx.showToast({
           title: 'Markdown已复制',

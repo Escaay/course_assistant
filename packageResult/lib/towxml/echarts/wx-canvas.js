@@ -1,8 +1,9 @@
 export default class WxCanvas {
-  constructor(ctx, canvasId) {
+  constructor(ctx, canvasId, width) {
     this.ctx = ctx;
     this.canvasId = canvasId;
     this.chart = null;
+    this.width = width || 360;
 
     // this._initCanvas(zrender, ctx);
     this._initStyle(ctx);
@@ -25,6 +26,14 @@ export default class WxCanvas {
 
   setChart(chart) {
     this.chart = chart;
+  }
+
+  getWidth() {
+    return this.width;
+  }
+
+  setWidth(width) {
+    this.width = width;
   }
 
   attachEvent () {

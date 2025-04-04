@@ -23,7 +23,8 @@ Component({
 
 	data: {
 		size: {
-			height: 240
+			height: 240,
+			width: 360
 		}
 	},
 
@@ -48,7 +49,8 @@ Component({
 			obj.color = ['#60acfc', '#32d3eb', '#5bc49f', '#feb64d', '#ff7c7c', '#9287e7'];
 				_ts.setData({
 					size: {
-						height: obj.height ? obj.height : 240
+						height: obj.height ? obj.height : 240,
+						width: obj.width ? obj.width : 360
 					}
 				})
 			_ts.data.ec = {};
@@ -84,7 +86,7 @@ Component({
 
 			ctx = wx.createCanvasContext(this.data.canvasId, this);
 
-			const canvas = new WxCanvas(ctx, this.data.canvasId);
+			const canvas = new WxCanvas(ctx, this.data.canvasId, this.data.size.width);
 
 			echarts.setCanvasCreator(() => {
 				return canvas;
@@ -92,14 +94,17 @@ Component({
 
 			var query = wx.createSelectorQuery().in(this);
 			query.select('.ec-canvas').boundingClientRect(res => {
+				const actualWidth = res.width || this.data.size.width;
+				canvas.setWidth(actualWidth);
+				
 				if (typeof callback === 'function') {
-					this.chart = callback(canvas, res.width, res.height);
+					this.chart = callback(canvas, actualWidth, res.height);
 				} else if (this.data.ec && typeof this.data.ec.onInit === 'function') {
-					this.chart = this.data.ec.onInit(canvas, res.width, res.height);
+					this.chart = this.data.ec.onInit(canvas, actualWidth, res.height);
 				} else {
 					this.triggerEvent('init', {
 						canvas: canvas,
-						width: res.width,
+						width: actualWidth,
 						height: res.height
 					});
 				}
