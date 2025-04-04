@@ -29,12 +29,15 @@ app.post('/generate-mindmap', async (req, res) => {
   let browser = null;
   
   try {
-    const content = req.body.content;
+    let content = req.body.content;
     
     if (!content) {
       console.log('请求缺少content字段');
       return res.status(400).json({ error: 'Content is required' });
     }
+
+    // 预处理Markdown内容，转换不支持的代码块
+    content = preprocessMarkdown(content);
 
     console.log('开始转换Markdown内容...');
     const transformer = new Transformer();
@@ -160,6 +163,86 @@ app.post('/generate-mindmap', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// 预处理Markdown函数
+function preprocessMarkdown(markdown) {
+  // 处理yuml代码块
+  markdown = markdown.replace(/```yuml[\s\S]*?```/g, (match) => {
+    // 提取yuml内容
+    const yumlContent = match.replace(/```yuml\n|```$/g, '');
+    // 将yuml转换为文本描述
+    return '**流程图描述**:\n- ' + yumlContent
+      .split('\n')
+      .filter(line => !line.startsWith('//') && line.trim() !== '')
+      .map(line => {
+        // 简单处理yuml语法，提取关系
+        const parts = line.match(/\[(.*?)\]\s*(-+>)\s*\[(.*?)\]/);
+        if (parts) {
+          return `${parts[1]} 到 ${parts[3]}`;
+        }
+        return line;
+      })
+      .join('\n- ');
+  });
+
+  // 处理echarts代码块
+  markdown = markdown.replace(/```echarts[\s\S]*?```/g, (match) => {
+    try {
+      // 提取echarts JSON内容
+      const jsonStr = match.replace(/```echarts\n|\n```$/g, '');
+      const chartData = JSON.parse(jsonStr);
+      
+      let result = '**图表数据**:\n';
+      
+      // 处理饼图
+      if (chartData.series && chartData.series[0] && chartData.series[0].type === 'pie') {
+        result += `- 图表标题: ${chartData.title?.text || '未命名'}\n`;
+        if (chartData.title?.subtext) {
+          result += `- 副标题: ${chartData.title.subtext}\n`;
+        }
+        result += '- 数据项:\n';
+        
+        chartData.series[0].data.forEach(item => {
+          result += `  - ${item.name}: ${item.value}\n`;
+        });
+      }
+      // 处理柱状图
+      else if (chartData.series && chartData.series[0] && chartData.series[0].type === 'bar') {
+        result += `- 图表类型: 柱状图\n`;
+        if (chartData.xAxis && chartData.xAxis.data) {
+          result += '- 数据项:\n';
+          chartData.xAxis.data.forEach((category, index) => {
+            const value = chartData.series[0].data[index] || '无数据';
+            result += `  - ${category}: ${value}\n`;
+          });
+        }
+      }
+      // 其他类型图表的通用处理
+      else {
+        result += `- 图表类型: ${chartData.series?.[0]?.type || '未知'}\n`;
+        result += `- 图表内容: 包含复杂数据结构，已简化显示\n`;
+      }
+      
+      return result;
+    } catch (e) {
+      console.error('处理echarts代码块时出错:', e);
+      return '**图表数据**: (解析错误，无法显示)';
+    }
+  });
+
+  // 处理数学公式，确保它们能正确显示
+  // markmap通常支持基本的LaTeX语法，但可能需要调整格式
+  markdown = markdown.replace(/\$\$([\s\S]*?)\$\$/g, (match, formula) => {
+    return `**数学公式**: \`${formula.trim()}\``;
+  });
+
+  // 处理行内公式
+  markdown = markdown.replace(/\$([^\$\n]+?)\$/g, (match, formula) => {
+    return `\`${formula.trim()}\``;
+  });
+
+  return markdown;
+}
 
 // 健康检查端点
 app.get('/', (req, res) => {
