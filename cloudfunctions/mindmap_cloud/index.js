@@ -1,8 +1,8 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const { Transformer } = require('markmap-lib');
-const puppeteer = require('puppeteer-core'); // 改为使用 puppeteer-core
-const chromium = require('@sparticuz/chromium'); // 添加 @sparticuz/chromium
+const puppeteer = require('puppeteer-core');
+const chromium = require('@sparticuz/chromium');
 const fs = require('fs');
 
 // 创建 Express 应用
@@ -26,6 +26,7 @@ app.use((req, res, next) => {
 // 思维导图生成API
 app.post('/generate-mindmap', async (req, res) => {
   console.log('收到生成思维导图请求');
+  let browser = null;
   
   try {
     const content = req.body.content;
@@ -41,20 +42,7 @@ app.post('/generate-mindmap', async (req, res) => {
     
     console.log('Markdown转换完成，开始构建HTML...');
     
-    // 手动构建资源列表
-    const assets = {
-      styles: [
-        'https://cdn.jsdelivr.net/npm/markmap-toolbar@0.14.4/dist/style.css',
-        'https://cdn.jsdelivr.net/npm/markmap-view@0.14.4/dist/style.css'
-      ],
-      scripts: [
-        'https://cdn.jsdelivr.net/npm/d3@6.7.0',
-        'https://cdn.jsdelivr.net/npm/markmap-view@0.14.4/dist/index.min.js',
-        'https://cdn.jsdelivr.net/npm/markmap-toolbar@0.14.4/dist/index.umd.min.js'
-      ]
-    };
-
-    // 手动构建HTML
+    // 简化HTML，减少外部依赖
     const html = `
     <!DOCTYPE html>
     <html>
@@ -62,18 +50,25 @@ app.post('/generate-mindmap', async (req, res) => {
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <style>
-        body, #markmap {
+        body {
           width: 2400px;
           height: 1800px;
           margin: 0;
           padding: 0;
+          background-color: white;
+        }
+        #markmap {
+          width: 100%;
+          height: 100%;
+          background-color: white;
         }
       </style>
-      ${assets.styles.map(src => `<link rel="stylesheet" href="${src}">`).join('\n')}
+      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/markmap-view@0.14.4/dist/style.css">
     </head>
     <body>
       <svg id="markmap" style="width: 100%; height: 100%"></svg>
-      ${assets.scripts.map(src => `<script src="${src}"></script>`).join('\n')}
+      <script src="https://cdn.jsdelivr.net/npm/d3@6.7.0"></script>
+      <script src="https://cdn.jsdelivr.net/npm/markmap-view@0.14.4/dist/index.min.js"></script>
       <script>
         (function() {
           const root = ${JSON.stringify(root)};
@@ -90,35 +85,79 @@ app.post('/generate-mindmap', async (req, res) => {
 
     console.log('HTML构建完成，开始生成图片...');
     
-    // 使用 @sparticuz/chromium 替代 SCF 环境中的 Puppeteer
-    const browser = await puppeteer.launch({
-      args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
+    // 增加启动参数和超时设置
+    browser = await puppeteer.launch({
+      args: [...chromium.args, '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+      defaultViewport: {
+        width: 2400,
+        height: 1800
+      },
       executablePath: await chromium.executablePath(),
       headless: chromium.headless,
+      timeout: 60000 // 增加超时时间到60秒
     });
     
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0' });
+    
+    // 设置更长的超时时间
+    page.setDefaultNavigationTimeout(60000);
+    page.setDefaultTimeout(60000);
+    
+    // 设置内容并等待，使用更简单的等待条件
+    await page.setContent(html, { 
+      waitUntil: ['load', 'domcontentloaded'],
+      timeout: 60000
+    });
+    
+    console.log('页面内容已设置，等待渲染...');
     
     // 等待思维导图渲染完成
-    await page.waitForSelector('#markmap');
+    await page.waitForSelector('#markmap', { timeout: 30000 });
     
-    // 使用 setTimeout 替代 waitForTimeout
-    await new Promise(resolve => setTimeout(resolve, 1000)); // 额外等待一秒确保渲染完成
+    // 增加等待时间确保渲染完成
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    
+    console.log('开始截图...');
     
     // 截图
     const imageBuffer = await page.screenshot({ 
       type: 'png',
-      fullPage: true
+      fullPage: true,
+      omitBackground: true
     });
     
     await browser.close();
+    browser = null;
     const base64Image = Buffer.from(imageBuffer).toString('base64'); // 显式转换
     console.log(`图片生成成功，大小: ${imageBuffer.length} 字节`);
     res.json({ image: base64Image });
   } catch (err) {
     console.error('生成思维导图时发生错误:', err);
+    
+    // 尝试强制截图
+    if (browser) {
+      try {
+        console.log('尝试强制截图...');
+        const page = (await browser.pages())[0];
+        if (page) {
+          const imageBuffer = await page.screenshot({ 
+            type: 'png',
+            fullPage: true
+          });
+          await browser.close();
+          const base64Image = Buffer.from(imageBuffer).toString('base64'); // 显式转换
+          console.log(`强制截图成功，大小: ${imageBuffer.length} 字节`);
+          return res.json({ image: base64Image });
+        }
+      } catch (screenshotErr) {
+        console.error('强制截图失败:', screenshotErr);
+      } finally {
+        if (browser) {
+          await browser.close().catch(e => console.error('关闭浏览器失败:', e));
+        }
+      }
+    }
+    
     res.status(500).json({ error: err.message });
   }
 });

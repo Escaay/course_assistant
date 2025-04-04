@@ -289,7 +289,7 @@ page {
   width: 100%;
   height: calc(100vh - 80rpx - 150rpx); /* 减去标签栏和底部按钮的高度 */
   position: relative;
-  background-color: #f9f9f9;
+  background-color: white;
 }
 
 /* WebView样式 */
@@ -362,11 +362,20 @@ page {
   background-color: white;
 }
 
+/* 思维导图操作按钮容器 */
+.mindmap-actions {
+  position: fixed;
+  bottom: 30rpx;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 30rpx;
+  box-sizing: border-box;
+  z-index: 1000;
+}
+
 /* 重新生成按钮样式 */
 .regenerate-btn {
-  position: fixed;
-  right: 30rpx;
-  bottom: 170rpx; /* 在底部按钮上方 */
   background-color: #0052d9;
   color: #fff;
   padding: 16rpx 24rpx;
@@ -375,7 +384,6 @@ page {
   align-items: center;
   font-size: 26rpx;
   box-shadow: 0 4rpx 12rpx rgba(0, 82, 217, 0.2);
-  z-index: 1000;
 }
 
 .regenerate-icon {
@@ -390,9 +398,6 @@ page {
 
 /* 保存图片按钮样式 */
 .save-image-btn {
-  position: fixed;
-  right: 30rpx;
-  bottom: 170rpx; /* 在底部按钮上方 */
   background-color: #0052d9;
   color: #fff;
   padding: 16rpx 24rpx;
@@ -401,7 +406,6 @@ page {
   align-items: center;
   font-size: 26rpx;
   box-shadow: 0 4rpx 12rpx rgba(0, 82, 217, 0.2);
-  z-index: 1000;
 }
 
 .save-image-icon {
