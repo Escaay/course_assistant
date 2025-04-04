@@ -4,17 +4,21 @@ page {
   background-color: #f8f9fa;
   color: #333;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 .scrollarea {
   height: 100%;
   overflow-y: auto;
+  width: 100%;
 }
 
 .container {
   padding: 40rpx;
   padding-bottom: 150rpx;
   box-sizing: border-box;
+  width: 100%;
 }
 
 .header {
@@ -90,6 +94,12 @@ page {
   padding: 30rpx;
   margin-bottom: 40rpx;
   box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
+  width: calc(100vw - 50rpx);
+  box-sizing: border-box;
+  margin-left: -40rpx;
+  margin-right: -40rpx;
+  padding-left: 40rpx;
+  padding-right: 40rpx;
 }
 
 .file-list-header {
@@ -138,6 +148,7 @@ page {
   align-items: center;
   flex: 1;
   overflow: hidden;
+  min-width: 0;
 }
 
 .file-icon {
@@ -166,6 +177,8 @@ page {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-width: 0;
+  flex: 1;
 }
 
 .file-name {

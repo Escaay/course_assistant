@@ -94,7 +94,7 @@ app.post('/generate-mindmap', async (req, res) => {
       },
       executablePath: await chromium.executablePath(),
       headless: chromium.headless,
-      timeout: 60000 // 增加超时时间到60秒
+      timeout: 200000 // 增加超时时间到60秒
     });
     
     const page = await browser.newPage();
