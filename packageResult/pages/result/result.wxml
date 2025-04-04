@@ -64,10 +64,10 @@
     
     <!-- 添加重新生成按钮和保存图片按钮 -->
     <view class="mindmap-actions" wx:if="{{mindmapImage}}">
-      <!-- <view class="regenerate-btn" bindtap="regenerateMindmap">
-        <view class="regenerate-icon"></view>
-        <text>重新生成</text>
-      </view> -->
+      <view class="copy-markdown-btn" bindtap="copyAsMarkdown">
+        <view class="copy-markdown-icon"></view>
+        <text>复制Markdown</text>
+      </view>
       
       <view class="save-image-btn" bindtap="saveMindmapImage">
         <view class="save-image-icon"></view>

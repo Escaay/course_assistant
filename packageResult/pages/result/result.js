@@ -135,7 +135,7 @@ Page({
           header: {
             'Content-Type': 'application/json'
           },
-          timeout: 120000, // 设置为120秒
+          timeout: 200000, // 设置为200秒
           success: res => resolve(res),
           fail: err => reject(err)
         });
@@ -697,6 +697,34 @@ Page({
         console.error('写入临时文件失败:', err);
         wx.showToast({
           title: '保存失败',
+          icon: 'none'
+        });
+      }
+    });
+  },
+  
+  // 复制为Markdown
+  copyAsMarkdown: function() {
+    if (!this.data.markdownContent) {
+      wx.showToast({
+        title: '没有可复制的内容',
+        icon: 'none'
+      });
+      return;
+    }
+    
+    wx.setClipboardData({
+      data: this.data.markdownContent,
+      success: function() {
+        wx.showToast({
+          title: 'Markdown已复制',
+          icon: 'success'
+        });
+      },
+      fail: function(err) {
+        console.error('复制失败:', err);
+        wx.showToast({
+          title: '复制失败',
           icon: 'none'
         });
       }
