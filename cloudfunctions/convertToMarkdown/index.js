@@ -29,7 +29,7 @@ exports.main = async (event, context) => {
         // 下载文件
         console.log('fileID', fileID)
         const res = await cloud.downloadFile({
-          fileID: 'cloud://cloud1-0gys80m48da147a1.636c-cloud1-0gys80m48da147a1-1304271127/uploads/1743332465288_本科毕业论文要求说明（仅供正文排版参考） - 副本.docx',
+          fileID,
         });
         
         const buffer = res.fileContent;
