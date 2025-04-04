@@ -22,7 +22,7 @@ Page({
 
   chooseFile() {
     wx.chooseMessageFile({
-      count: 1, // 限制只能选择一个文件，避免界面过长
+      count: 10,
       type: 'file',
       extension: ['pdf', 'doc', 'docx'],
       success: (res) => {
