@@ -94,28 +94,28 @@ app.post('/generate-mindmap', async (req, res) => {
       },
       executablePath: await chromium.executablePath(),
       headless: chromium.headless,
-      timeout: 200000 // 增加超时时间到60秒
+      timeout: 200000 // 这里只是浏览器启动的超时时间
     });
     
     const page = await browser.newPage();
     
     // 设置更长的超时时间
-    page.setDefaultNavigationTimeout(60000);
-    page.setDefaultTimeout(60000);
+    page.setDefaultNavigationTimeout(200000); // 修改为200秒
+    page.setDefaultTimeout(200000); // 修改为200秒
     
     // 设置内容并等待，使用更简单的等待条件
     await page.setContent(html, { 
       waitUntil: ['load', 'domcontentloaded'],
-      timeout: 60000
+      timeout: 200000 // 修改为200秒
     });
     
     console.log('页面内容已设置，等待渲染...');
     
     // 等待思维导图渲染完成
-    await page.waitForSelector('#markmap', { timeout: 30000 });
+    await page.waitForSelector('#markmap', { timeout: 200000 }); // 修改为200秒
     
     // 增加等待时间确保渲染完成
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    await new Promise(resolve => setTimeout(resolve, 5000)); // 可以适当增加等待时间
     
     console.log('开始截图...');
     
