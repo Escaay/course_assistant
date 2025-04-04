@@ -1,5 +1,5 @@
 <view class="h2w__latexBox">
-    <scroll-view class="h2w__latexView" scroll-x enable-flex>
+    <scroll-view class="h2w__latexView" enable-flex>
         <view wx:if="{{isLoading}}" class="latex-loading">数学公式加载中......</view>
         <image 
             class="{{attr.class}}" 
