@@ -306,6 +306,9 @@ Page({
           for await (let event of res.eventStream) {
             if (event.data === '[DONE]') {
               console.log('AI响应完成', fullContent);
+              // 确保最终内容被保存到全局变量
+              app.globalData.markdownContent = fullContent;
+              app.globalData.streamedMarkdown = fullContent;
               break;
             }
             
@@ -330,8 +333,15 @@ Page({
               console.error('解析事件数据失败:', parseError);
             }
           }
+          
+          // 在循环结束后再次确保最终内容被保存
+          app.globalData.markdownContent = fullContent;
+          app.globalData.streamedMarkdown = fullContent;
           resolve(fullContent);
         } catch (error) {
+          // 即使出错，也保存已收集的内容
+          app.globalData.markdownContent = fullContent;
+          app.globalData.streamedMarkdown = fullContent;
           reject(error);
         }
       });
