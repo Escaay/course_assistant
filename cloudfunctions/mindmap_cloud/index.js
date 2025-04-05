@@ -45,7 +45,7 @@ app.post('/generate-mindmap', async (req, res) => {
     
     console.log('Markdown转换完成，开始构建HTML...');
     
-    // 简化HTML，减少外部依赖
+    // 简化HTML，减少外部依赖，添加调试信息
     const html = `
     <!DOCTYPE html>
     <html>
@@ -65,21 +65,37 @@ app.post('/generate-mindmap', async (req, res) => {
           height: 100%;
           background-color: white;
         }
+        #debug {
+          position: absolute;
+          top: 10px;
+          left: 10px;
+          color: red;
+          font-size: 24px;
+          z-index: 1000;
+        }
       </style>
       <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/markmap-view@0.14.4/dist/style.css">
     </head>
     <body>
+      <div id="debug">Debug: Loading...</div>
       <svg id="markmap" style="width: 100%; height: 100%"></svg>
       <script src="https://cdn.jsdelivr.net/npm/d3@6.7.0"></script>
       <script src="https://cdn.jsdelivr.net/npm/markmap-view@0.14.4/dist/index.min.js"></script>
       <script>
         (function() {
-          const root = ${JSON.stringify(root)};
-          const mm = markmap.Markmap.create('#markmap', {
-            autoFit: true,
-            duration: 0,
-            maxInitialScale: 5
-          }, root);
+          try {
+            document.getElementById('debug').innerText = 'Debug: Parsing data...';
+            const root = ${JSON.stringify(root)};
+            document.getElementById('debug').innerText = 'Debug: Creating markmap...';
+            const mm = markmap.Markmap.create('#markmap', {
+              autoFit: true,
+              duration: 0,
+              maxInitialScale: 5
+            }, root);
+            document.getElementById('debug').innerText = 'Debug: Markmap created successfully';
+          } catch (e) {
+            document.getElementById('debug').innerText = 'Debug: Error: ' + e.message;
+          }
         })();
       </script>
     </body>
@@ -117,10 +133,55 @@ app.post('/generate-mindmap', async (req, res) => {
     // 等待思维导图渲染完成
     await page.waitForSelector('#markmap', { timeout: 200000 }); // 修改为200秒
     
-    // 增加等待时间确保渲染完成
-    await new Promise(resolve => setTimeout(resolve, 5000)); // 可以适当增加等待时间
+    // 递归检查思维导图是否渲染完成
+    const checkMapRendered = async (maxAttempts = 10, currentAttempt = 1, waitTime = 5000) => {
+      console.log(`检查思维导图渲染状态 (尝试 ${currentAttempt}/${maxAttempts})...`);
+      
+      // 检查思维导图是否已渲染
+      const isMapRendered = await page.evaluate(() => {
+        const svg = document.querySelector('#markmap');
+        const hasNodes = svg && svg.querySelector('g') !== null;
+        const debugInfo = document.getElementById('debug').innerText;
+        return { 
+          hasNodes, 
+          debugInfo,
+          nodeCount: svg ? svg.querySelectorAll('g').length : 0
+        };
+      });
+      
+      console.log(`渲染状态: 有节点=${isMapRendered.hasNodes}, 节点数=${isMapRendered.nodeCount}, 调试信息="${isMapRendered.debugInfo}"`);
+      
+      // 如果已渲染或达到最大尝试次数，则返回
+      if (isMapRendered.hasNodes && isMapRendered.nodeCount > 1) {
+        console.log('思维导图已成功渲染');
+        return true;
+      }
+      
+      if (currentAttempt >= maxAttempts) {
+        console.log(`达到最大尝试次数 (${maxAttempts})，停止等待`);
+        return false;
+      }
+      
+      // 等待指定时间后再次检查
+      console.log(`思维导图尚未完全渲染，等待 ${waitTime/1000} 秒后重试...`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+      
+      // 递归调用
+      return checkMapRendered(maxAttempts, currentAttempt + 1, waitTime);
+    };
+    
+    // 开始递归检查
+    await checkMapRendered();
     
     console.log('开始截图...');
+    
+    // 在截图前隐藏调试信息
+    await page.evaluate(() => {
+      const debugElement = document.getElementById('debug');
+      if (debugElement) {
+        debugElement.style.display = 'none';
+      }
+    });
     
     // 截图
     const imageBuffer = await page.screenshot({ 
@@ -142,6 +203,19 @@ app.post('/generate-mindmap', async (req, res) => {
         console.log('尝试强制截图...');
         const page = (await browser.pages())[0];
         if (page) {
+          // 尝试获取调试信息
+          const debugInfo = await page.evaluate(() => {
+            const debugElement = document.getElementById('debug');
+            if (debugElement) {
+              const info = debugElement.innerText;
+              debugElement.style.display = 'none'; // 隐藏调试信息再截图
+              return info;
+            }
+            return 'No debug info';
+          }).catch(e => 'Failed to get debug info: ' + e.message);
+          
+          console.log('调试信息:', debugInfo);
+          
           const imageBuffer = await page.screenshot({ 
             type: 'png',
             fullPage: true
