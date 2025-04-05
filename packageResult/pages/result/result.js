@@ -245,110 +245,113 @@ Page({
     const lines = content.split(/\r?\n/);
     
     for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trimRight();
-        
-        // 检查是否是特殊代码块的开始
-        if (line.trim().startsWith('```markdown')) {
-            inSpecialBlock = true;
-            blockType = 'markdown';
-            currentBlock = '';
-            continue;
-        } else if (line.trim().startsWith('```latex')) {
-            inSpecialBlock = true;
-            blockType = 'latex';
-            currentBlock = '';
-            continue;
-        } else if (line.trim().startsWith('```yuml')) {
-            inSpecialBlock = true;
-            blockType = 'yuml';
-            blockStartMarker = line;
-            currentBlock = '';
-            continue;
-        } else if (line.trim().startsWith('```echarts')) {
-            inSpecialBlock = true;
-            blockType = 'echarts';
-            blockStartMarker = line;
-            currentBlock = '';
-            continue;
-        } else if (line.trim() === '$$') {
-            // console.log('数学公式标记:', line)
-            if (!inSpecialBlock) {
-                // 多行数学公式开始
-                // console.log('多行数学公式开始')
-                inSpecialBlock = true;
-                blockType = 'math-block';
-                currentBlock = '$$\n';  // 保留开始标记
-            } else if (blockType === 'math-block') {
-                // 多行数学公式结束
-                currentBlock += '$$';  // 保留结束标记
-                // console.log('多行数学公式结束，内容:', currentBlock)
-                inSpecialBlock = false;
-                processedContent += `${currentBlock}\n`;
-                continue;
-            }
-            continue;
-        } else if (line.includes('$') && !inSpecialBlock) {
-            // 处理单行数学公式
-            let processedLine = line;
-            const matches = line.match(/\$[^\$]+\$/g);
-            if (matches) {
-                matches.forEach(match => {
-                    // 检查是否是有效的行内公式（前后都是$，且不是$$，且不包含HTML标签）
-                    if (match.startsWith('$') && 
-                        match.endsWith('$') && 
-                        !match.startsWith('$$')) {
-                        processedLine += `${match}\n`
-                    } else {
-                        console.log('无效的行内数学公式格式:', match);
-                    }
-                });
-            }
-            processedContent += processedLine + '\n';
-            continue;
+      const line = lines[i].trimRight();
+      const trimmedLine = line.trim();
+      
+      // 检查是否是特殊代码块的开始
+      if (trimmedLine.startsWith('```markdown')) {
+        inSpecialBlock = true;
+        blockType = 'markdown';
+        blockStartMarker = '```markdown';
+        currentBlock = '';
+        continue;
+      } else if (trimmedLine.startsWith('```latex')) {
+        inSpecialBlock = true;
+        blockType = 'latex';
+        blockStartMarker = '```latex';
+        currentBlock = '';
+        continue;
+      } else if (trimmedLine.startsWith('```yuml')) {
+        inSpecialBlock = true;
+        blockType = 'yuml';
+        blockStartMarker = '```yuml';
+        currentBlock = '';
+        continue;
+      } else if (trimmedLine.startsWith('```echarts')) {
+        inSpecialBlock = true;
+        blockType = 'echarts';
+        blockStartMarker = '```echarts';
+        currentBlock = '';
+        continue;
+      } else if (trimmedLine === '$$') {
+        if (!inSpecialBlock) {
+          // 多行数学公式开始
+          inSpecialBlock = true;
+          blockType = 'math-block';
+          currentBlock = '$$\n';  // 保留开始标记
+        } else if (blockType === 'math-block') {
+          // 多行数学公式结束
+          currentBlock += '$$';  // 保留结束标记
+          inSpecialBlock = false;
+          processedContent += `${currentBlock}\n`;
+          continue;
         }
+        continue;
+      } else if (trimmedLine.includes('$') && !inSpecialBlock) {
+        // 处理单行数学公式
+        let processedLine = line;
+        const matches = trimmedLine.match(/\$[^\$]+\$/g);
+        if (matches) {
+          matches.forEach(match => {
+            // 检查是否是有效的行内公式（前后都是$，且不是$$，且不包含HTML标签）
+            if (match.startsWith('$') && 
+                match.endsWith('$') && 
+                !match.startsWith('$$')) {
+              processedLine += `${match}\n`
+            } else {
+              console.log('无效的行内数学公式格式:', match);
+            }
+          });
+        }
+        processedContent += processedLine + '\n';
+        continue;
+      }
+      
+      // 检查代码块的结束
+      if (inSpecialBlock && trimmedLine === '```' && blockType !== 'math-block') {
+        inSpecialBlock = false;
         
-        // 检查其他代码块的结束
-        if (inSpecialBlock && line === '```' && blockType !== 'math-block') {
-            inSpecialBlock = false;
+        switch (blockType) {
+          case 'markdown':
+            processedContent += blockStartMarker + '\n' + currentBlock + '\n```\n';
+            break;
             
-            switch (blockType) {
-                case 'markdown':
-                    processedContent += currentBlock + '\n';
-                    break;
-                    
-                case 'latex':
-                    processedContent += currentBlock + '\n';
-                    break;
-                    
-                case 'yuml':
-                    processedContent += blockStartMarker + '\n' + currentBlock + '\n```\n';
-                    break;
-                    
-                case 'echarts':
-                    try {
-                        const jsonContent = currentBlock.trim();
-                        JSON.parse(jsonContent);
-                        processedContent += blockStartMarker + '\n' + currentBlock + '\n```\n';
-                    } catch (error) {
-                        console.error('echarts 解析失败:', error);
-                        processedContent += '> *数据正在加载中...*\n\n';
-                    }
-                    break;
+          case 'latex':
+            processedContent += blockStartMarker + '\n' + currentBlock + '\n```\n';
+            break;
+            
+          case 'yuml':
+            processedContent += blockStartMarker + '\n' + currentBlock + '\n```\n';
+            break;
+            
+          case 'echarts':
+            try {
+              // 尝试解析JSON，确保格式正确
+              const jsonContent = currentBlock.trim();
+              JSON.parse(jsonContent);
+              processedContent += blockStartMarker + '\n' + currentBlock + '\n```\n';
+            } catch (error) {
+              console.error('echarts 解析失败:', error);
+              console.error('问题内容:', currentBlock);
+              processedContent += '> *图表数据解析失败*\n\n';
             }
-            continue;
+            break;
         }
-        
-        // 收集代码块内容或添加普通行
-        if (inSpecialBlock) {
-            currentBlock += line + '\n';
-        } else {
-            processedContent += line + '\n';
-        }
+        continue;
+      }
+      
+      // 收集代码块内容或添加普通行
+      if (inSpecialBlock) {
+        // 保留原始内容，包括缩进
+        currentBlock += line + '\n';
+      } else {
+        processedContent += line + '\n';
+      }
     }
     
     // 处理未闭合的代码块
     if (inSpecialBlock) {
-        processedContent += '> *内容正在加载中...*\n\n';
+      processedContent += '> *内容正在加载中...*\n\n';
     }
     
     return processedContent;

@@ -168,28 +168,44 @@ app.post('/generate-mindmap', async (req, res) => {
 function preprocessMarkdown(markdown) {
   // 处理yuml代码块
   markdown = markdown.replace(/```yuml[\s\S]*?```/g, (match) => {
-    // 提取yuml内容
-    const yumlContent = match.replace(/```yuml\n|```$/g, '');
-    // 将yuml转换为文本描述
-    return '**流程图描述**:\n- ' + yumlContent
-      .split('\n')
-      .filter(line => !line.startsWith('//') && line.trim() !== '')
-      .map(line => {
-        // 简单处理yuml语法，提取关系
-        const parts = line.match(/\[(.*?)\]\s*(-+>)\s*\[(.*?)\]/);
-        if (parts) {
-          return `${parts[1]} 到 ${parts[3]}`;
-        }
-        return line;
-      })
-      .join('\n- ');
+    try {
+      // 提取yuml内容，处理可能的空格和格式问题
+      const yumlContent = match
+        .replace(/```yuml\s*/i, '') // 移除开头的```yuml及其后的空白
+        .replace(/\s*```$/i, '')    // 移除结尾的```及其前的空白
+        .trim();                    // 去除首尾空白
+      
+      // 将yuml转换为文本描述
+      return '**流程图描述**:\n- ' + yumlContent
+        .split('\n')
+        .filter(line => !line.startsWith('//') && line.trim() !== '')
+        .map(line => {
+          // 简单处理yuml语法，提取关系
+          const parts = line.match(/\[(.*?)\]\s*(-+>)\s*\[(.*?)\]/);
+          if (parts) {
+            return `${parts[1]} 到 ${parts[3]}`;
+          }
+          return line;
+        })
+        .join('\n- ');
+    } catch (e) {
+      console.error('处理yuml代码块时出错:', e);
+      console.error('问题代码块:', match);
+      return '**流程图描述**: (解析错误，无法显示)';
+    }
   });
 
   // 处理echarts代码块
   markdown = markdown.replace(/```echarts[\s\S]*?```/g, (match) => {
     try {
-      // 提取echarts JSON内容
-      const jsonStr = match.replace(/```echarts\n|\n```$/g, '');
+      // 提取echarts JSON内容，处理可能的空格和格式问题
+      const jsonStr = match
+        .replace(/```echarts\s*/i, '') // 移除开头的```echarts及其后的空白
+        .replace(/\s*```$/i, '')       // 移除结尾的```及其前的空白
+        .trim();                       // 去除首尾空白
+      
+      console.log('尝试解析的JSON字符串:', jsonStr);
+      
       const chartData = JSON.parse(jsonStr);
       
       let result = '**图表数据**:\n';
@@ -209,6 +225,7 @@ function preprocessMarkdown(markdown) {
       // 处理柱状图
       else if (chartData.series && chartData.series[0] && chartData.series[0].type === 'bar') {
         result += `- 图表类型: 柱状图\n`;
+        result += `- 图表标题: ${chartData.title?.text || '未命名'}\n`;
         if (chartData.xAxis && chartData.xAxis.data) {
           result += '- 数据项:\n';
           chartData.xAxis.data.forEach((category, index) => {
@@ -220,13 +237,17 @@ function preprocessMarkdown(markdown) {
       // 其他类型图表的通用处理
       else {
         result += `- 图表类型: ${chartData.series?.[0]?.type || '未知'}\n`;
+        result += `- 图表标题: ${chartData.title?.text || '未命名'}\n`;
         result += `- 图表内容: 包含复杂数据结构，已简化显示\n`;
       }
       
       return result;
     } catch (e) {
       console.error('处理echarts代码块时出错:', e);
-      return '**图表数据**: (解析错误，无法显示)';
+      console.error('问题代码块:', match);
+      
+      // 尝试简单显示，避免完全失败
+      return '**图表数据**:\n- 解析错误，无法显示详细内容\n- 原始代码已保留';
     }
   });
 
