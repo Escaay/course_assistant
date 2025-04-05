@@ -22,48 +22,45 @@ Page({
 
   chooseFile() {
     wx.chooseMessageFile({
-      count: 10,
+      count: 1,
       type: 'file',
       extension: ['pdf', 'doc', 'docx'],
       success: (res) => {
         const tempFiles = res.tempFiles;
-        const newFileList = [...this.data.fileList];
-        
-        tempFiles.forEach(file => {
-          // 获取文件类型
-          const extension = file.name.split('.').pop().toLowerCase();
-          let type = '';
+        if (tempFiles.length > 0) {
+          const file = tempFiles[0];
           
-          if (extension === 'pdf') {
-            type = 'PDF';
-          } else if (extension === 'doc' || extension === 'docx') {
-            type = 'DOC';
+          // 获取文件类型
+          const fileName = file.name || '';
+          const fileExt = fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase();
+          
+          // 验证文件类型
+          if (fileExt !== 'pdf' && fileExt !== 'doc' && fileExt !== 'docx') {
+            wx.showToast({
+              title: '仅支持PDF和Word文档',
+              icon: 'none'
+            });
+            return;
           }
+          
+          const fileType = fileExt === 'pdf' ? 'PDF' : 'DOC';
           
           // 计算文件大小（KB）
-          const size = (file.size / 1024).toFixed(2);
+          const fileSizeKB = Math.round(file.size / 1024);
           
-          // 限制文件名长度，避免显示溢出
-          let displayName = file.name;
-          if (displayName.length > 20) {
-            const ext = displayName.split('.').pop();
-            displayName = displayName.substring(0, 17) + '...' + (ext ? '.' + ext : '');
-          }
-          
-          newFileList.push({
+          // 添加到文件列表
+          const newFile = {
             path: file.path,
-            name: displayName,
-            originalName: file.name,
-            size: size,
-            type: type
+            name: fileName,
+            size: fileSizeKB,
+            type: fileType,
+            originalName: fileName
+          };
+          
+          this.setData({
+            fileList: [...this.data.fileList, newFile]
           });
-        });
-        
-        this.setData({
-          fileList: newFileList
-        });
-        
-        app.globalData.fileList = newFileList;
+        }
       }
     });
   },
@@ -111,7 +108,8 @@ Page({
       const res = await c1.callFunction({
         name: 'convertToMarkdown',
         data: {
-          fileIDs: fileIDs
+          fileIDs: fileIDs,
+          deleteAfterConversion: true
         }
       });
 
@@ -711,5 +709,22 @@ Page({
       console.log('读取文件列表失败', e);
       return [];
     }
+  },
+
+  // 添加分享功能
+  onShareAppMessage() {
+    return {
+      title: '智能文档小助手',
+      path: '/pages/index/index',
+      imageUrl: getApp().globalData?.shareImageUrl
+    };
+  },
+
+  onShareTimeline() {
+    return {
+      title: '智能文档小助手',
+      query: '',
+      imageUrl: getApp().globalData?.shareImageUrl
+    };
   },
 });

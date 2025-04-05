@@ -758,5 +758,22 @@ Page({
       }
     });
   },
+  
+  // 添加分享功能
+  onShareAppMessage() {
+    return {
+      title: '智能文档小助手',
+      path: '/pages/index/index',
+      imageUrl: getApp().globalData?.shareImageUrl
+    };
+  },
+
+  onShareTimeline() {
+    return {
+      title: '智能文档小助手',
+      query: '',
+      imageUrl: getApp().globalData?.shareImageUrl
+    };
+  },
 });
 

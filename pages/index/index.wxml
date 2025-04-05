@@ -11,7 +11,7 @@
       <view class="upload-area" bindtap="chooseFile">
         <custom-icon name="upload" size="80rpx" color="#0052d9" />
         <text class="upload-text">点击上传文件</text>
-        <text class="upload-tip">支持PDF和Word文档格式</text>
+        <text class="upload-tip">仅支持PDF和Word文档格式(.pdf, .doc, .docx)</text>
       </view>
     </view>
     
@@ -44,18 +44,14 @@
     </view>
     
     <view class="action-area">
-      <custom-button 
-        type="primary" 
-        size="large" 
-        block="{{true}}" 
+      <button 
+        class="convert-btn {{fileList.length === 0 || isConverting ? 'convert-btn-disabled' : ''}}" 
         disabled="{{fileList.length === 0 || isConverting}}" 
         loading="{{isConverting}}"
-        icon="{{isConverting ? '' : 'play-circle-stroke'}}"
         bindtap="convertFiles"
-        class="convert-btn"
       >
         {{isConverting ? '处理中...' : '开始处理'}}
-      </custom-button>
+      </button>
     </view>
   </view>
 </scroll-view>

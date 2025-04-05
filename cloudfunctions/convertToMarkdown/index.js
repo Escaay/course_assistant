@@ -13,7 +13,7 @@ const mammoth = require('mammoth');
 exports.main = async (event, context) => {
   try {
     console.log(123)
-    const { fileIDs } = event;
+    const { fileIDs, deleteAfterConversion } = event;
     console.log(fileIDs)
     if (!fileIDs || !Array.isArray(fileIDs) || fileIDs.length === 0) {
       return {
@@ -84,9 +84,33 @@ exports.main = async (event, context) => {
       }
     }
     
+    // 如果需要删除文件
+    if (deleteAfterConversion) {
+      try {
+        console.log('开始删除文件...');
+        for (const fileID of fileIDs) {
+          await cloud.deleteFile({
+            fileList: [fileID]
+          });
+          console.log(`已删除文件: ${fileID}`);
+        }
+      } catch (deleteError) {
+        console.error('删除文件时出错:', deleteError);
+        return {
+          success: true,
+          markdown: combinedMarkdown,
+          deleteStatus: {
+            success: false,
+            error: deleteError.message
+          }
+        };
+      }
+    }
+    
     return {
       success: true,
-      markdown: combinedMarkdown
+      markdown: combinedMarkdown,
+      deleteStatus: deleteAfterConversion ? { success: true } : null
     };
   } catch (error) {
     console.error('云函数执行出错:', error);
