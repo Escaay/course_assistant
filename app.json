@@ -14,7 +14,7 @@
   "window": {
     "backgroundTextStyle": "light",
     "navigationBarBackgroundColor": "#fff",
-    "navigationBarTitleText": "AI文档助手",
+    "navigationBarTitleText": "智能文档小助手",
     "navigationBarTextStyle": "black",
     "navigationStyle": "default"
   },

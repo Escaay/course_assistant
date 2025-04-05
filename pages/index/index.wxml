@@ -3,7 +3,7 @@
   <view class="container">
     <view class="header">
       <image class="logo" src="/images/logo.png" mode="aspectFit"></image>
-      <text class="title">AI文档助手</text>
+      <text class="title">智能文档小助手</text>
       <text class="subtitle">上传文档，智能生成结构化内容</text>
     </view>
     
