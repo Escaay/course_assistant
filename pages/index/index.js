@@ -10,7 +10,13 @@ Page({
     aiProgress: 0,
     aiResponseVisible: false,
     aiResponseText: '',
-    showUploadOptionsPopup: false
+    showUploadOptionsPopup: false,
+    logoUrl: '',
+    slogans: [
+      "上传你的文件，自动生成总结",
+      "一键生成思维导图，让知识可视化",
+      "智能文档助手，让学习更轻松"
+    ]
   },
 
   onLoad() {
@@ -18,6 +24,27 @@ Page({
     app.globalData.fileList = [];
     app.globalData.markdownContent = '';
     app.globalData.mindMapData = null;
+
+    // 初始化云环境并获取logo
+    const c1 = new wx.cloud.Cloud({
+      resourceAppid: 'wx93739e7f65cff363',
+      resourceEnv: 'cloud1-0gys80m48da147a1',
+    });
+    
+    c1.init().then(() => {
+      // 获取logo文件的真实链接
+      return c1.getTempFileURL({
+        fileList: ['cloud://cloud1-0gys80m48da147a1.636c-cloud1-0gys80m48da147a1-1304271127/course_assitant/course_logo.webp']
+      });
+    }).then(res => {
+      if (res.fileList && res.fileList[0] && res.fileList[0].tempFileURL) {
+        this.setData({
+          logoUrl: res.fileList[0].tempFileURL
+        });
+      }
+    }).catch(err => {
+      console.error('获取logo失败:', err);
+    });
   },
 
   chooseFile() {

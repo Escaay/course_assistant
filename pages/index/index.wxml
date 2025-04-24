@@ -2,9 +2,13 @@
 <scroll-view class="scrollarea" scroll-y type="list">
   <view class="container">
     <view class="header">
-      <image class="logo" src="/images/logo.png" mode="aspectFit"></image>
+      <view class="logo-container">
+        <image class="logo" src="{{logoUrl}}" mode="aspectFit" wx:if="{{logoUrl}}"></image>
+      </view>
       <text class="title">智能文档小助手</text>
-      <text class="subtitle">上传文档，智能生成结构化内容</text>
+      <view class="slogan-container">
+        <text class="slogan" wx:for="{{slogans}}" wx:key="index">{{item}}</text>
+      </view>
     </view>
     
     <view class="upload-section">
