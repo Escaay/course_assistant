@@ -84,8 +84,20 @@ app.post('/generate-mindmap', async (req, res) => {
           font-size: 24px;
           z-index: 1000;
         }
+        .markmap{font:300 16px/20px sans-serif}
+        .markmap-link{fill:none}
+        .markmap-node>circle{cursor:pointer}
+        .markmap-foreign{display:inline-block}
+        .markmap-foreign a{color:#0097e6}
+        .markmap-foreign a:hover{color:#00a8ff}
+        .markmap-foreign code{background-color:#f0f0f0;border-radius:2px;color:#555;font-size:calc(1em - 2px)}
+        .markmap-foreign :not(pre)>code{padding:.2em .4em}
+        .markmap-foreign del{text-decoration:line-through}
+        .markmap-foreign em{font-style:italic}
+        .markmap-foreign strong{font-weight:bolder}
+        .markmap-foreign mark{background:#ffeaa7}
+        .markmap-foreign pre,.markmap-foreign pre[class*=language-]{margin:0;padding:.2em .4em}
       </style>
-      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/markmap-view@0.14.4/dist/style.css">
       <script>
         // 错误收集
         window._errors = [];
@@ -108,22 +120,16 @@ app.post('/generate-mindmap', async (req, res) => {
         // 存储根数据，以便后续使用
         window.rootData = ${JSON.stringify(root)};
         
-        // 加载脚本的函数
-        function loadScript(url, callback) {
-          const script = document.createElement('script');
-          script.src = url;
-          script.onload = callback;
-          script.onerror = function() {
-            document.getElementById('debug').innerText = 'Debug: Error loading script: ' + url;
-          };
-          document.head.appendChild(script);
-        }
-        
-        // 顺序加载脚本
+        // 先加载D3库
         document.getElementById('debug').innerText = 'Debug: Loading D3...';
-        loadScript('https://cdn.jsdelivr.net/npm/d3@6.7.0', function() {
+        const d3Script = document.createElement('script');
+        d3Script.src = 'https://cdnjs.cloudflare.com/ajax/libs/d3/6.7.0/d3.min.js';
+        d3Script.onload = function() {
           document.getElementById('debug').innerText = 'Debug: Loading Markmap...';
-          loadScript('https://cdn.jsdelivr.net/npm/markmap-view@0.14.4/dist/index.min.js', function() {
+          // 加载markmap
+          const script = document.createElement('script');
+          script.src = 'https://unpkg.com/markmap-view@0.14.4/dist/index.min.js';
+          script.onload = function() {
             try {
               document.getElementById('debug').innerText = 'Debug: Creating markmap...';
               if (typeof markmap === 'undefined') {
@@ -137,10 +143,35 @@ app.post('/generate-mindmap', async (req, res) => {
                 document.getElementById('debug').innerText = 'Debug: Markmap created successfully';
               }
             } catch (e) {
+              console.error('创建思维导图时出错:', e);
               document.getElementById('debug').innerText = 'Debug: Error: ' + e.message;
             }
-          });
-        });
+          };
+          script.onerror = function(error) {
+            const errorInfo = {
+              type: 'Markmap Load Error',
+              time: new Date().toISOString(),
+              userAgent: navigator.userAgent,
+              error: error
+            };
+            console.error('Markmap加载失败:', errorInfo);
+            document.getElementById('debug').innerText = 'Debug: Error loading Markmap';
+            window._errors.push(errorInfo);
+          };
+          document.head.appendChild(script);
+        };
+        d3Script.onerror = function(error) {
+          const errorInfo = {
+            type: 'D3 Load Error',
+            time: new Date().toISOString(),
+            userAgent: navigator.userAgent,
+            error: error
+          };
+          console.error('D3加载失败:', errorInfo);
+          document.getElementById('debug').innerText = 'Debug: Error loading D3';
+          window._errors.push(errorInfo);
+        };
+        document.head.appendChild(d3Script);
       </script>
     </body>
     </html>
