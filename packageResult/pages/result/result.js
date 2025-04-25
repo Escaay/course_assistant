@@ -387,8 +387,6 @@ Page({
             if (!this.data.userHasInteracted && this.data.activeTab === 0) {
               this.autoScrollToBottom();
             }
-        } else {
-          console.log('等待第一次有内容的数据...');
         }
         
         // 检查是否已经完成流式接收
@@ -414,7 +412,7 @@ Page({
           if (latestContent) {
             console.log('流式接收完成，立即生成思维导图');
             wx.showToast({
-              title: '文档生成完毕，开始生成思维导图......',
+              title: '开始生成思维导图...',
               icon: 'none',
               duration: 2000
             });
