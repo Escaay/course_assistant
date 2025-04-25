@@ -387,7 +387,6 @@ Page({
       
       // 处理流式响应
       let fullContent = '';
-      let lastUpdateTime = Date.now();
       
       const processStream = new Promise(async (resolve, reject) => {
         try {
@@ -397,6 +396,27 @@ Page({
               // 确保最终内容被保存到全局变量
               app.globalData.markdownContent = fullContent;
               app.globalData.streamedMarkdown = fullContent;
+              app.globalData.isStreamingMarkdown = false;
+              app.globalData.streamingComplete = true;
+              
+              // 获取当前页面栈
+              const pages = getCurrentPages();
+              const resultPage = pages.find(page => page.route === 'packageResult/pages/result/result');
+              
+              // 如果结果页面存在，更新其内容并生成思维导图
+              if (resultPage) {
+                resultPage.renderMarkdown(fullContent);
+                // 显示正在生成思维导图的提示
+                wx.showToast({
+                  title: '开始生成思维导图...',
+                  icon: 'none',
+                  duration: 2000
+                });
+                // 生成思维导图
+                console.log('开始生成思维导图');
+                resultPage.generateMindMap(fullContent);
+              }
+              resolve(fullContent);  // 解析 Promise
               break;
             }
             
@@ -415,17 +435,11 @@ Page({
                 fullContent += text;
                 app.globalData.markdownContent = fullContent;
                 app.globalData.streamedMarkdown = fullContent;
-                lastUpdateTime = Date.now();
               }
             } catch (parseError) {
               console.error('解析事件数据失败:', parseError);
             }
           }
-          
-          // 在循环结束后再次确保最终内容被保存
-          app.globalData.markdownContent = fullContent;
-          app.globalData.streamedMarkdown = fullContent;
-          resolve(fullContent);
         } catch (error) {
           // 即使出错，也保存已收集的内容
           app.globalData.markdownContent = fullContent;
@@ -434,33 +448,31 @@ Page({
         }
       });
       
-      // 超时检查
-      const timeoutCheck = () => {
-        const now = Date.now();
-        if (now - lastUpdateTime > 60000) {
-          app.globalData.markdownContent = fullContent;
-          app.globalData.isStreamingMarkdown = false;
-          app.globalData.streamingComplete = true;
-          return;
-        }
-        
-        if (!app.globalData.streamingComplete) {
-          setTimeout(timeoutCheck, 2000);
-        }
-      };
-      
-      setTimeout(timeoutCheck, 2000);
-      
       try {
-        fullContent = await processStream;
-        app.globalData.markdownContent = fullContent;
-        app.globalData.isStreamingMarkdown = false;
-        app.globalData.streamingComplete = true;
+        await processStream;  // 等待流式处理完成，[DONE]事件已经处理了所有逻辑
       } catch (streamError) {
         console.error('处理流式响应失败:', streamError);
         app.globalData.markdownContent = fullContent || markdown;
         app.globalData.isStreamingMarkdown = false;
         app.globalData.streamingComplete = true;
+        
+        // 获取当前页面栈
+        const pages = getCurrentPages();
+        const resultPage = pages.find(page => page.route === 'packageResult/pages/result/result');
+        
+        // 如果结果页面存在，更新其内容并生成思维导图
+        if (resultPage) {
+          resultPage.renderMarkdown(fullContent || markdown);
+          // 即使出错也显示正在生成思维导图的提示
+          wx.showToast({
+            title: '开始生成思维导图...',
+            icon: 'none',
+            duration: 2000
+          });
+          // 即使出错也尝试生成思维导图
+          console.log('开始生成思维导图');
+          resultPage.generateMindMap(fullContent || markdown);
+        }
       }
       
     } catch (error) {

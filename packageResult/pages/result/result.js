@@ -26,7 +26,7 @@ Page({
   onLoad() {
     // 设置页面标题
     wx.setNavigationBarTitle({
-      title: '文档内容'
+      title: '生成结果'
     });
     
     // 检查是否是流式接收模式
@@ -371,10 +371,6 @@ Page({
     
     // 设置轮询间隔
     const pollingInterval = 300; // 300毫秒，更快的更新频率
-    let lastContentLength = 0; // 记录上次内容长度
-    let noUpdateCount = 0; // 记录连续无更新次数
-    const maxNoUpdateCount = 10; // 3秒内没有新数据就认为结束了 (10 * 300ms = 3000ms)
-    let hasStartedCounting = false; // 标记是否已开始计数
     
     this.pollingTimer = setInterval(() => {
       // 使用 wx.nextTick 确保在下一帧执行，避免阻塞UI
@@ -384,14 +380,6 @@ Page({
         
         // 检查是否有新内容
         if (latestContent.length > 0) {
-          // 只有在内容长度大于0时才开始计数
-          if (!hasStartedCounting) {
-            console.log('收到第一次有内容的数据，开始计数');
-            hasStartedCounting = true;
-          }
-          
-          if (latestContent.length > lastContentLength) {
-            
             // 使用 towxml 渲染更新的内容
             this.renderMarkdown(latestContent);
             
@@ -399,15 +387,6 @@ Page({
             if (!this.data.userHasInteracted && this.data.activeTab === 0) {
               this.autoScrollToBottom();
             }
-            
-            // 更新上次内容长度
-            lastContentLength = latestContent.length;
-            noUpdateCount = 0; // 重置无更新计数
-          } else if (hasStartedCounting) {
-            // 只有在已开始计数的情况下才增加无更新计数
-            noUpdateCount++; // 增加无更新计数
-            console.log('无新内容更新，计数:', noUpdateCount);
-          }
         } else {
           console.log('等待第一次有内容的数据...');
         }
@@ -433,41 +412,15 @@ Page({
           
           // 流式接收完成后，立即生成思维导图
           if (latestContent) {
-            console.log('latestContent1', latestContent)
             console.log('流式接收完成，立即生成思维导图');
+            wx.showToast({
+              title: '文档生成完毕，开始生成思维导图......',
+              icon: 'none',
+              duration: 2000
+            });
             this.generateMindMap(latestContent);
           }
           return;
-        }
-        
-        // 如果已开始计数且3秒内没有新数据，则认为流式接收已完成
-        if (hasStartedCounting && noUpdateCount >= maxNoUpdateCount) {
-          console.log('3秒内没有新数据，认为流式接收已完成');
-          
-          // 在标记完成时，确保使用全局最新内容
-          if (latestContent) {
-            console.log('流式接收完成，确保使用全局最新内容');
-            this.setData({
-              markdownContent: latestContent
-            });
-            this.renderMarkdown(latestContent);
-          }
-          
-          this.setData({
-            streamingComplete: true,
-            isStreaming: false
-          });
-          
-          // 设置全局完成标志
-          app.globalData.streamingComplete = true;
-          
-          clearInterval(this.pollingTimer);
-          
-          // 流式接收完成后，立即生成思维导图
-          if (latestContent) {
-            console.log('流式接收完成，立即生成思维导图');
-            this.generateMindMap(latestContent);
-          }
         }
       });
     }, pollingInterval);
@@ -675,27 +628,23 @@ Page({
     wx.showLoading({
       title: '保存中...',
     });
-    
-    // 获取临时文件路径
-    wx.getFileSystemManager().writeFile({
-      filePath: `${wx.env.USER_DATA_PATH}/mindmap_temp.png`,
-      data: this.data.mindmapImage.replace(/^data:image\/\w+;base64,/, ""),
-      encoding: 'base64',
+
+    // 先获取相册授权
+    wx.getSetting({
       success: (res) => {
-        // 保存图片到相册
-        wx.saveImageToPhotosAlbum({
-          filePath: `${wx.env.USER_DATA_PATH}/mindmap_temp.png`,
-          success: () => {
-            wx.hideLoading();
-            wx.showToast({
-              title: '已保存到相册',
-              icon: 'success'
-            });
-          },
-          fail: (err) => {
-            wx.hideLoading();
-            console.error('保存到相册失败:', err);
-            if (err.errMsg.indexOf('auth deny') >= 0) {
+        console.log('获取设置信息:', res);
+        if (!res.authSetting['scope.writePhotosAlbum']) {
+          // 没有权限，先获取权限
+          wx.authorize({
+            scope: 'scope.writePhotosAlbum',
+            success: () => {
+              // 获得权限后开始保存
+              this.startSaveImage();
+            },
+            fail: (err) => {
+              wx.hideLoading();
+              console.error('授权失败:', err);
+              // 用户拒绝授权
               wx.showModal({
                 title: '提示',
                 content: '需要您授权保存图片到相册',
@@ -705,29 +654,117 @@ Page({
                     wx.openSetting({
                       success: (settingRes) => {
                         console.log('设置结果:', settingRes);
+                        if (settingRes.authSetting['scope.writePhotosAlbum']) {
+                          // 用户在设置页面授权了，开始保存
+                          this.startSaveImage();
+                        }
                       }
                     });
                   }
                 }
               });
-            } else {
-              wx.showToast({
-                title: '保存失败',
-                icon: 'none'
-              });
             }
-          }
-        });
+          });
+        } else {
+          // 已有权限，直接保存
+          this.startSaveImage();
+        }
       },
       fail: (err) => {
         wx.hideLoading();
-        console.error('写入临时文件失败:', err);
+        console.error('获取设置信息失败:', err);
         wx.showToast({
           title: '保存失败',
           icon: 'none'
         });
       }
     });
+  },
+
+  // 实际执行保存图片的函数
+  startSaveImage: function() {
+    try {
+      console.log('开始保存图片...');
+      const fs = wx.getFileSystemManager();
+      const tempFilePath = `${wx.env.USER_DATA_PATH}/mindmap_temp.png`;
+      
+      // 检查并处理base64数据
+      let base64Data = this.data.mindmapImage;
+      if (base64Data.indexOf('data:image/') > -1) {
+        base64Data = base64Data.split(',')[1];
+      }
+      
+      console.log('写入临时文件...');
+      // 先尝试删除可能存在的临时文件
+      try {
+        fs.unlinkSync(tempFilePath);
+        console.log('已删除旧的临时文件');
+      } catch (e) {
+        console.log('无需删除旧文件或删除失败:', e);
+      }
+
+      // 写入新的临时文件
+      fs.writeFileSync(
+        tempFilePath,
+        base64Data,
+        'base64'
+      );
+      
+      console.log('临时文件写入成功，开始保存到相册...');
+      
+      // 保存图片到相册
+      wx.saveImageToPhotosAlbum({
+        filePath: tempFilePath,
+        success: () => {
+          wx.hideLoading();
+          console.log('保存到相册成功');
+          wx.showToast({
+            title: '已保存到相册',
+            icon: 'success'
+          });
+          
+          // 清理临时文件
+          try {
+            fs.unlinkSync(tempFilePath);
+            console.log('清理临时文件成功');
+          } catch (e) {
+            console.log('清理临时文件失败:', e);
+          }
+        },
+        fail: (err) => {
+          wx.hideLoading();
+          console.error('保存到相册失败:', err);
+          
+          // 检查是否是权限问题
+          if (err.errMsg.indexOf('auth deny') >= 0) {
+            wx.showModal({
+              title: '提示',
+              content: '保存失败，请检查相册权限设置',
+              confirmText: '去设置',
+              success: (res) => {
+                if (res.confirm) {
+                  wx.openSetting();
+                }
+              }
+            });
+          } else {
+            wx.showToast({
+              title: '保存失败: ' + err.errMsg,
+              icon: 'none',
+              duration: 2000
+            });
+          }
+        }
+      });
+    } catch (error) {
+      wx.hideLoading();
+      console.error('保存过程出错:', error);
+      wx.showToast({
+        title: '保存失败: ' + error.message,
+        icon: 'none',
+        duration: 2000
+      });
+    }
   },
   
   // 复制为Markdown

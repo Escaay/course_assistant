@@ -384,6 +384,8 @@ page {
   align-items: center;
   font-size: 26rpx;
   box-shadow: 0 4rpx 12rpx rgba(0, 82, 217, 0.2);
+  width: 240rpx;  /* 添加固定宽度 */
+  justify-content: center;  /* 内容居中 */
 }
 
 .copy-markdown-icon {
@@ -394,6 +396,7 @@ page {
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
+  flex-shrink: 0;  /* 防止图标被压缩 */
 }
 
 /* 保存图片按钮样式 */
@@ -406,6 +409,8 @@ page {
   align-items: center;
   font-size: 26rpx;
   box-shadow: 0 4rpx 12rpx rgba(0, 82, 217, 0.2);
+  width: 240rpx;  /* 添加固定宽度 */
+  justify-content: center;  /* 内容居中 */
 }
 
 .save-image-icon {
@@ -416,4 +421,5 @@ page {
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
+  flex-shrink: 0;  /* 防止图标被压缩 */
 }
