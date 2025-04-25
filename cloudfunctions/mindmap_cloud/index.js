@@ -230,12 +230,12 @@ app.post('/generate-mindmap', async (req, res) => {
     // 等待思维导图渲染完成
     await page.waitForSelector('#markmap', { timeout: 300000 }); // 修改为5分钟
     
-    // 先等待10秒钟，给脚本加载和执行的时间
-    console.log('等待10秒钟让脚本加载和执行...');
-    await new Promise(resolve => setTimeout(resolve, 10000));
+    // 先等待3秒钟，给脚本加载和执行的时间
+    console.log('等待3秒钟让脚本加载和执行...');
+    await new Promise(resolve => setTimeout(resolve, 3000));
     
     // 递归检查思维导图是否渲染完成
-    const checkMapRendered = async (maxAttempts = 15, currentAttempt = 1, waitTime = 8000) => {
+    const checkMapRendered = async (maxAttempts = 8, currentAttempt = 1, waitTime = 2000) => {
       console.log(`检查思维导图渲染状态 (尝试 ${currentAttempt}/${maxAttempts})...`);
       
       // 检查思维导图是否已渲染
@@ -298,7 +298,7 @@ app.post('/generate-mindmap', async (req, res) => {
             if (typeof markmap === 'undefined') {
               console.log('尝试重新加载markmap库...');
               const script = document.createElement('script');
-              script.src = 'https://cdn.jsdelivr.net/npm/markmap-view@0.14.4/dist/index.min.js';
+              script.src = 'https://unpkg.com/markmap-view@0.14.4/dist/index.min.js';
               document.head.appendChild(script);
             }
             
@@ -316,12 +316,13 @@ app.post('/generate-mindmap', async (req, res) => {
         return false;
       }
       
-      // 等待指定时间后再次检查
-      console.log(`思维导图尚未完全渲染，等待 ${waitTime/1000} 秒后重试...`);
-      await new Promise(resolve => setTimeout(resolve, waitTime));
+      // 使用渐进式等待时间，但不超过4秒
+      const nextWaitTime = Math.min(waitTime * 1.5, 4000);
+      console.log(`思维导图尚未完全渲染，等待 ${nextWaitTime/1000} 秒后重试...`);
+      await new Promise(resolve => setTimeout(resolve, nextWaitTime));
       
       // 递归调用
-      return checkMapRendered(maxAttempts, currentAttempt + 1, waitTime);
+      return checkMapRendered(maxAttempts, currentAttempt + 1, nextWaitTime);
     };
     
     // 开始递归检查
