@@ -444,7 +444,7 @@ function getNodeDepth(node) {
 
 // 预处理Markdown函数
 function preprocessMarkdown(markdown) {
-  console.log('开始处理yuml代码块...');
+  console.log('开始预处理Markdown...');
   // 处理yuml代码块
   markdown = markdown.replace(/```yuml[\s\S]*?```/g, (match) => {
     try {
@@ -531,35 +531,131 @@ function preprocessMarkdown(markdown) {
     }
   });
 
-  console.log('开始处理数学公式...');
-  // 处理多行数学公式，保留原始环境设置
-  markdown = markdown.replace(/\$\$([\s\S]*?)\$\$/g, (match, formula) => {
-    // 保留原始公式格式，只是确保行以破折号开头
-    return `- $${formula.trim()}$\n`;
+  console.log('开始处理表格...');
+  // 先处理表格，确保在处理公式前完成
+  // 处理Markdown表格，将其转换为更适合思维导图显示的结构化格式
+  // 使用正则表达式匹配整个表格（包括表头、分隔行和数据行）
+  let tablePattern = /^\|(.+)\|$[\r\n]+^\|([\s\-:\|]+)\|$[\r\n]+((?:^\|.+\|$[\r\n]?)+)/gm;
+
+  markdown = markdown.replace(tablePattern, (match, headerRow, separatorRow, bodyRows) => {
+    // 解析表头
+    const headers = headerRow.split('|').map(cell => cell.trim()).filter(cell => cell);
+    
+    // 解析数据行
+    const rows = bodyRows.split('\n')
+      .filter(row => row.trim().startsWith('|') && row.trim().endsWith('|'))
+      .map(row => {
+        return row.trim().substring(1, row.trim().length - 1) // 去除首尾的 |
+          .split('|')
+          .map(cell => cell.trim())
+          .filter(cell => cell !== '');
+      });
+    
+    // 检查是否有标题行上方的标题（通常是 ### 开头的标题）
+    const tableTitle = match.match(/^###\s+(.+)$/m);
+    const titlePrefix = tableTitle ? `- ${tableTitle[1]}:\n` : '- 表格数据:\n';
+    let result = titlePrefix;
+    
+    // 表格主体内容处理
+    // 根据表格结构，决定最适合的显示方式
+    if (headers.length >= 2 && rows.length > 0) {
+      // 检查是否有主键列（第一列），通常用作分类
+      const hasKeyColumn = true;
+      
+      // 如果表头是"主体|出资比例|责任范围"这样的格式，采用更直观的结构
+      if (headers.includes('主体') || headers.includes('类型') || headers.includes('名称') || 
+          headers.includes('项目') || headers.includes('分类') || headers[0].includes('名') || 
+          headers[0].includes('类') || headers[0].includes('项') || headers[0].includes('体')) {
+        
+        // 直接以表格行作为一级节点，列内容作为属性
+        const keyColumnIndex = 0; // 假设第一列是主键
+        
+        // 将表头显示为顶层节点
+        result += `  - 表头: ${headers.join(' | ')}\n`;
+        
+        // 为每行数据创建节点，使用主键列的值作为节点名称
+        rows.forEach((row, rowIndex) => {
+          // 添加行号方便识别，但以内容为主
+          result += `  - ${row[keyColumnIndex] || '行 ' + (rowIndex + 1)}:\n`;
+          
+          // 将剩余列作为该行的属性
+          for (let i = 0; i < row.length; i++) {
+            if (i !== keyColumnIndex && i < headers.length) {
+              result += `    - ${headers[i]}: ${row[i]}\n`;
+            }
+          }
+        });
+      } else {
+        // 采用传统表格视图
+        result += `  - 表格内容:\n`;
+        // 显示表头
+        result += `    - ${headers.join(' | ')}\n`;
+        
+        // 显示数据行
+        rows.forEach((row, rowIndex) => {
+          result += `    - ${row.join(' | ')}\n`;
+        });
+      }
+    } else {
+      // 简单表格，直接按行显示
+      result += `  - 表头: ${headers.join(' | ')}\n`;
+      
+      rows.forEach((row, rowIndex) => {
+        result += `  - 行 ${rowIndex + 1}: ${row.join(' | ')}\n`;
+      });
+    }
+    
+    // 确保表格后面有足够的换行来分隔其他内容
+    return result + "\n\n";
   });
 
-  // 不直接处理行内公式，避免格式破坏
-  // 只处理含有行内公式的行，确保它们在思维导图中有正确的层级
-
-  // 1. 将文本按行分割
-  const lines = markdown.split('\n');
-  // 2. 处理每一行
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    // 只处理包含行内公式且不以破折号开头的行
-    if (line.includes('$') && !line.trim().startsWith('-')) {
-      // 检查这行是否包含行内公式
-      const hasInlineMath = /\$[^\$\n]+?\$/g.test(line);
-      if (hasInlineMath) {
-        // 在行开头添加破折号和空格
-        lines[i] = `- ${line}`;
-      }
+  console.log('开始处理数学公式...');
+  // 处理公式 - 在处理表格后进行
+  // 使用更安全的方式处理多行公式，避免重复处理
+  let processedMarkdown = '';
+  let lastIndex = 0;
+  
+  // 使用正则表达式匹配所有多行公式 - 使用非贪婪匹配和明确的边界
+  const multilineFormulaPattern = /(\n|^)(\$\$[\s\S]*?\$\$)(\n|$)/g;
+  let match;
+  
+  // 记录已处理的位置，确保不会重复处理
+  while ((match = multilineFormulaPattern.exec(markdown)) !== null) {
+    // 添加当前匹配之前的文本
+    processedMarkdown += markdown.substring(lastIndex, match.index);
+    
+    // 提取匹配的分组
+    const [fullMatch, beforeText, formulaContent, afterText] = match;
+    
+    // 创建处理后的公式
+    // 将双$改为单$并添加破折号，保持原格式
+    // 确保处理后的公式与其他内容有明确分隔
+    const processedFormula = beforeText + '- $' + formulaContent.substring(2, formulaContent.length-2).replace(/\n\s*/g, ' ').trim() + '$' + afterText;
+    
+    // 添加处理后的公式
+    processedMarkdown += processedFormula;
+    
+    // 更新lastIndex，防止重复处理
+    lastIndex = match.index + fullMatch.length;
+    
+    // 确保正则表达式不会卡在同一位置
+    if (multilineFormulaPattern.lastIndex <= match.index) {
+      multilineFormulaPattern.lastIndex = lastIndex;
     }
+    
+    console.log(`处理公式: 从位置 ${match.index} 到 ${lastIndex}`);
   }
-  // 3. 重新组合文本
-  markdown = lines.join('\n');
+  
+  // 添加剩余未处理的文本
+  processedMarkdown += markdown.substring(lastIndex);
+  
+  // 使用处理后的文本替换原始文本
+  markdown = processedMarkdown;
 
-  console.log('Markdown预处理完成');
+  // 移除处理行内公式的代码，让它们按原样显示
+  // 不再需要添加前导破折号
+
+  console.log('Markdown预处理完成', markdown);
   return markdown;
 }
 
