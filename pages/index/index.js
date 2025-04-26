@@ -62,15 +62,15 @@ Page({
           const fileExt = fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase();
           
           // 验证文件类型
-          if (fileExt !== 'pdf' && fileExt !== 'doc' && fileExt !== 'docx') {
+          if (fileExt !== 'pdf' && fileExt !== 'docx') {
             wx.showToast({
-              title: '仅支持PDF和Word文档',
+              title: '仅支持pdf和docx文件',
               icon: 'none'
             });
             return;
           }
           
-          const fileType = fileExt === 'pdf' ? 'PDF' : 'DOC';
+          const fileType = fileExt === 'pdf' ? 'PDF' : 'DOCX';
           
           // 计算文件大小（KB）
           const fileSizeKB = Math.round(file.size / 1024);

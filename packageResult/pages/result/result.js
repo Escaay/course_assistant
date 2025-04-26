@@ -627,56 +627,8 @@ Page({
       title: '保存中...',
     });
 
-    // 先获取相册授权
-    wx.getSetting({
-      success: (res) => {
-        console.log('获取设置信息:', res);
-        if (!res.authSetting['scope.writePhotosAlbum']) {
-          // 没有权限，先获取权限
-          wx.authorize({
-            scope: 'scope.writePhotosAlbum',
-            success: () => {
-              // 获得权限后开始保存
-              this.startSaveImage();
-            },
-            fail: (err) => {
-              wx.hideLoading();
-              console.error('授权失败:', err);
-              // 用户拒绝授权
-              wx.showModal({
-                title: '提示',
-                content: '需要您授权保存图片到相册',
-                confirmText: '去授权',
-                success: (res) => {
-                  if (res.confirm) {
-                    wx.openSetting({
-                      success: (settingRes) => {
-                        console.log('设置结果:', settingRes);
-                        if (settingRes.authSetting['scope.writePhotosAlbum']) {
-                          // 用户在设置页面授权了，开始保存
-                          this.startSaveImage();
-                        }
-                      }
-                    });
-                  }
-                }
-              });
-            }
-          });
-        } else {
-          // 已有权限，直接保存
-          this.startSaveImage();
-        }
-      },
-      fail: (err) => {
-        wx.hideLoading();
-        console.error('获取设置信息失败:', err);
-        wx.showToast({
-          title: '保存失败',
-          icon: 'none'
-        });
-      }
-    });
+    // 直接调用保存到相册的接口
+    this.startSaveImage();
   },
 
   // 实际执行保存图片的函数
@@ -735,17 +687,26 @@ Page({
           
           // 检查是否是权限问题
           if (err.errMsg.indexOf('auth deny') >= 0) {
+            // 用户拒绝授权，引导用户打开授权设置
             wx.showModal({
               title: '提示',
-              content: '保存失败，请检查相册权限设置',
-              confirmText: '去设置',
+              content: '需要您授权保存图片到相册',
+              confirmText: '去授权',
               success: (res) => {
                 if (res.confirm) {
-                  wx.openSetting();
+                  wx.openSetting({
+                    success: (settingRes) => {
+                      if (settingRes.authSetting['scope.writePhotosAlbum']) {
+                        // 用户在设置页面授权了，重新尝试保存
+                        this.startSaveImage();
+                      }
+                    }
+                  });
                 }
               }
             });
           } else {
+            if(err.errMsg === 'saveImageToPhotosAlbum:fail cancel') return
             wx.showToast({
               title: '保存失败: ' + err.errMsg,
               icon: 'none',

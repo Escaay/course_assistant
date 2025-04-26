@@ -25,8 +25,6 @@ Component({
 		attached: async function(){
 			const _ts = this;
 			let dataAttr = this.data.data.attrs;
-			console.log('LaTeX 公式渲染开始, data:', this.data.data);
-			console.log('LaTeX 公式渲染开始, attrs:', dataAttr);
 			
 			if (!dataAttr || !dataAttr.value) {
 				console.error('LaTeX 公式数据无效:', dataAttr);
@@ -50,7 +48,6 @@ Component({
 					theme: global._theme
 				}
 			}).then(res => {
-				console.log('LaTeX 公式渲染成功:', res);
 				// 确保 base64 字符串是有效的
 				if (res.result && res.result.body) {
 					const base64Data = res.result.body.trim();
@@ -72,7 +69,6 @@ Component({
 	},
 	methods: {
 		load: function(e) {
-			console.log('LaTeX 公式加载成功:', e.detail);
 			const _ts = this;
 			if (e.detail.width && e.detail.height) {
 				_ts.setData({
