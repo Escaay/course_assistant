@@ -98,6 +98,10 @@ app.post('/generate-mindmap', async (req, res) => {
         .markmap-foreign mark{background:#ffeaa7}
         .markmap-foreign pre,.markmap-foreign pre[class*=language-]{margin:0;padding:.2em .4em}
       </style>
+    </head>
+    <body>
+      <div id="debug">Debug: Loading...</div>
+      <svg id="markmap" style="width: 100%; height: 100%"></svg>
       <script>
         // 错误收集
         window._errors = [];
@@ -111,67 +115,55 @@ app.post('/generate-mindmap', async (req, res) => {
           });
           console.error('捕获到错误:', e.message);
         });
-      </script>
-    </head>
-    <body>
-      <div id="debug">Debug: Loading...</div>
-      <svg id="markmap" style="width: 100%; height: 100%"></svg>
-      <script>
-        // 存储根数据，以便后续使用
+
+        // 存储根数据
         window.rootData = ${JSON.stringify(root)};
         
-        // 先加载D3库
-        document.getElementById('debug').innerText = 'Debug: Loading D3...';
-        const d3Script = document.createElement('script');
-        d3Script.src = 'https://cdnjs.cloudflare.com/ajax/libs/d3/6.7.0/d3.min.js';
-        d3Script.onload = function() {
-          document.getElementById('debug').innerText = 'Debug: Loading Markmap...';
-          // 加载markmap
-          const script = document.createElement('script');
-          script.src = 'https://unpkg.com/markmap-view@0.14.4/dist/index.min.js';
-          script.onload = function() {
-            try {
-              document.getElementById('debug').innerText = 'Debug: Creating markmap...';
-              if (typeof markmap === 'undefined') {
-                document.getElementById('debug').innerText = 'Debug: Error: markmap is not defined after loading';
-              } else {
-                const mm = markmap.Markmap.create('#markmap', {
-                  autoFit: true,
-                  duration: 0,
-                  maxInitialScale: 5
-                }, window.rootData);
-                document.getElementById('debug').innerText = 'Debug: Markmap created successfully';
-              }
-            } catch (e) {
-              console.error('创建思维导图时出错:', e);
-              document.getElementById('debug').innerText = 'Debug: Error: ' + e.message;
+        // 安全加载脚本
+        function loadScript(url) {
+          return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = url;
+            script.async = false;
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+          });
+        }
+
+        // 按顺序加载脚本并创建markmap
+        async function initializeMarkmap() {
+          const debug = document.getElementById('debug');
+          try {
+            debug.innerText = 'Debug: Loading D3...';
+            await loadScript('https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js');
+            
+            debug.innerText = 'Debug: Loading Markmap...';
+            await loadScript('https://cdn.jsdelivr.net/npm/markmap-view@0.18.8/dist/browser/index.min.js');
+            
+            debug.innerText = 'Debug: Creating Markmap...';
+            if (typeof markmap === 'undefined') {
+              throw new Error('Markmap library not loaded');
             }
-          };
-          script.onerror = function(error) {
-            const errorInfo = {
-              type: 'Markmap Load Error',
-              time: new Date().toISOString(),
-              userAgent: navigator.userAgent,
-              error: error
-            };
-            console.error('Markmap加载失败:', errorInfo);
-            document.getElementById('debug').innerText = 'Debug: Error loading Markmap';
-            window._errors.push(errorInfo);
-          };
-          document.head.appendChild(script);
-        };
-        d3Script.onerror = function(error) {
-          const errorInfo = {
-            type: 'D3 Load Error',
-            time: new Date().toISOString(),
-            userAgent: navigator.userAgent,
-            error: error
-          };
-          console.error('D3加载失败:', errorInfo);
-          document.getElementById('debug').innerText = 'Debug: Error loading D3';
-          window._errors.push(errorInfo);
-        };
-        document.head.appendChild(d3Script);
+
+            const mm = markmap.Markmap.create('#markmap', {
+              autoFit: true,
+              duration: 0,
+              maxInitialScale: 5
+            }, window.rootData);
+
+            debug.innerText = 'Debug: Markmap created successfully';
+          } catch (error) {
+            console.error('Markmap initialization error:', error);
+            debug.innerText = 'Debug: Error: ' + error.message;
+            throw error;
+          }
+        }
+
+        // 开始初始化
+        initializeMarkmap().catch(error => {
+          console.error('Failed to initialize markmap:', error);
+        });
       </script>
     </body>
     </html>
@@ -298,8 +290,9 @@ app.post('/generate-mindmap', async (req, res) => {
             if (typeof markmap === 'undefined') {
               console.log('尝试重新加载markmap库...');
               const script = document.createElement('script');
-              script.src = 'https://unpkg.com/markmap-view@0.14.4/dist/index.min.js';
+              script.textContent = markmapViewScript;
               document.head.appendChild(script);
+              console.log('通过内联脚本加载markmap-view');
             }
             
             // 检查DOM结构
@@ -531,130 +524,78 @@ function preprocessMarkdown(markdown) {
     }
   });
 
-  console.log('开始处理表格...');
-  // 先处理表格，确保在处理公式前完成
-  // 处理Markdown表格，将其转换为更适合思维导图显示的结构化格式
-  // 使用正则表达式匹配整个表格（包括表头、分隔行和数据行）
-  let tablePattern = /^\|(.+)\|$[\r\n]+^\|([\s\-:\|]+)\|$[\r\n]+((?:^\|.+\|$[\r\n]?)+)/gm;
-
-  markdown = markdown.replace(tablePattern, (match, headerRow, separatorRow, bodyRows) => {
-    // 解析表头
-    const headers = headerRow.split('|').map(cell => cell.trim()).filter(cell => cell);
+  // 处理数学公式
+  console.log('开始处理数学公式...');
+  
+  // 拆分Markdown为行
+  const lines = markdown.split('\n');
+  let processedLines = [];
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    console.log(`处理行 ${i}: ${line.substring(0, 30)}...`);
     
-    // 解析数据行
-    const rows = bodyRows.split('\n')
-      .filter(row => row.trim().startsWith('|') && row.trim().endsWith('|'))
-      .map(row => {
-        return row.trim().substring(1, row.trim().length - 1) // 去除首尾的 |
-          .split('|')
-          .map(cell => cell.trim())
-          .filter(cell => cell !== '');
-      });
-    
-    // 检查是否有标题行上方的标题（通常是 ### 开头的标题）
-    const tableTitle = match.match(/^###\s+(.+)$/m);
-    const titlePrefix = tableTitle ? `- ${tableTitle[1]}:\n` : '- 表格数据:\n';
-    let result = titlePrefix;
-    
-    // 表格主体内容处理
-    // 根据表格结构，决定最适合的显示方式
-    if (headers.length >= 2 && rows.length > 0) {
-      // 检查是否有主键列（第一列），通常用作分类
-      const hasKeyColumn = true;
+    // 检查是否是数学公式开始
+    if (line.trim().startsWith('$$')) {
+      console.log(`发现数学公式开始: 行 ${i}`);
+      // 找到公式结束的行
+      let endIndex = -1;
+      let formulaContent = line.trim().substring(2); // 去掉开头的$$
       
-      // 如果表头是"主体|出资比例|责任范围"这样的格式，采用更直观的结构
-      if (headers.includes('主体') || headers.includes('类型') || headers.includes('名称') || 
-          headers.includes('项目') || headers.includes('分类') || headers[0].includes('名') || 
-          headers[0].includes('类') || headers[0].includes('项') || headers[0].includes('体')) {
+      for (let j = i + 1; j < lines.length; j++) {
+        if (lines[j].trim().endsWith('$$')) {
+          endIndex = j;
+          console.log(`找到数学公式结束: 行 ${j}`);
+          // 添加最后一行，但去掉结尾的$$
+          formulaContent += ' ' + lines[j].trim().substring(0, lines[j].trim().length - 2);
+          break;
+        } else {
+          // 添加中间行
+          formulaContent += ' ' + lines[j].trim();
+        }
+      }
+      
+      if (endIndex !== -1) {
+        // 处理公式内容，将多行合并为一行，并清理多余空格
+        formulaContent = formulaContent.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+        console.log(`提取的公式内容: ${formulaContent}`);
         
-        // 直接以表格行作为一级节点，列内容作为属性
-        const keyColumnIndex = 0; // 假设第一列是主键
+        // 检查前一行是否包含**
+        const prevLine = i > 0 ? lines[i - 1].trim() : '';
+        console.log(`数学公式前一行: "${prevLine}"`);
         
-        // 将表头显示为顶层节点
-        result += `  - 表头: ${headers.join(' | ')}\n`;
+        if (prevLine.includes('**')) {
+          // 如果前一行有标题，则将公式作为行内公式添加到前一行后面
+          // 保留前面所有内容，直到前一行
+          processedLines.pop(); // 移除前一行，我们将修改它
+          const inlineFormula = `${prevLine} $${formulaContent}$`;
+          console.log(`添加到标题后: "${inlineFormula.substring(0, 50)}..."`);
+          processedLines.push(inlineFormula);
+        } else {
+          // 如果前一行没有标题，则添加列表项标记和行内公式
+          const inlineFormula = `- $${formulaContent}$`;
+          console.log(`添加列表项和公式: "${inlineFormula.substring(0, 50)}..."`);
+          processedLines.push(inlineFormula);
+        }
         
-        // 为每行数据创建节点，使用主键列的值作为节点名称
-        rows.forEach((row, rowIndex) => {
-          // 添加行号方便识别，但以内容为主
-          result += `  - ${row[keyColumnIndex] || '行 ' + (rowIndex + 1)}:\n`;
-          
-          // 将剩余列作为该行的属性
-          for (let i = 0; i < row.length; i++) {
-            if (i !== keyColumnIndex && i < headers.length) {
-              result += `    - ${headers[i]}: ${row[i]}\n`;
-            }
-          }
-        });
+        // 更新索引
+        i = endIndex;
+        console.log(`已处理数学公式，更新索引至 ${i}`);
       } else {
-        // 采用传统表格视图
-        result += `  - 表格内容:\n`;
-        // 显示表头
-        result += `    - ${headers.join(' | ')}\n`;
-        
-        // 显示数据行
-        rows.forEach((row, rowIndex) => {
-          result += `    - ${row.join(' | ')}\n`;
-        });
+        // 如果没有找到结束符号，添加当前行并继续
+        console.log(`未找到数学公式结束，添加当前行并继续`);
+        processedLines.push(line);
       }
     } else {
-      // 简单表格，直接按行显示
-      result += `  - 表头: ${headers.join(' | ')}\n`;
-      
-      rows.forEach((row, rowIndex) => {
-        result += `  - 行 ${rowIndex + 1}: ${row.join(' | ')}\n`;
-      });
+      // 对于非公式行，直接添加
+      processedLines.push(line);
     }
-    
-    // 确保表格后面有足够的换行来分隔其他内容
-    return result + "\n\n";
-  });
-
-  console.log('开始处理数学公式...');
-  // 处理公式 - 在处理表格后进行
-  // 使用更安全的方式处理多行公式，避免重复处理
-  let processedMarkdown = '';
-  let lastIndex = 0;
-  
-  // 使用正则表达式匹配所有多行公式 - 使用非贪婪匹配和明确的边界
-  const multilineFormulaPattern = /(\n|^)(\$\$[\s\S]*?\$\$)(\n|$)/g;
-  let match;
-  
-  // 记录已处理的位置，确保不会重复处理
-  while ((match = multilineFormulaPattern.exec(markdown)) !== null) {
-    // 添加当前匹配之前的文本
-    processedMarkdown += markdown.substring(lastIndex, match.index);
-    
-    // 提取匹配的分组
-    const [fullMatch, beforeText, formulaContent, afterText] = match;
-    
-    // 创建处理后的公式
-    // 将双$改为单$并添加破折号，保持原格式
-    // 确保处理后的公式与其他内容有明确分隔
-    const processedFormula = beforeText + '- $' + formulaContent.substring(2, formulaContent.length-2).replace(/\n\s*/g, ' ').trim() + '$' + afterText;
-    
-    // 添加处理后的公式
-    processedMarkdown += processedFormula;
-    
-    // 更新lastIndex，防止重复处理
-    lastIndex = match.index + fullMatch.length;
-    
-    // 确保正则表达式不会卡在同一位置
-    if (multilineFormulaPattern.lastIndex <= match.index) {
-      multilineFormulaPattern.lastIndex = lastIndex;
-    }
-    
-    console.log(`处理公式: 从位置 ${match.index} 到 ${lastIndex}`);
   }
   
-  // 添加剩余未处理的文本
-  processedMarkdown += markdown.substring(lastIndex);
+  // 重新组合Markdown
+  markdown = processedLines.join('\n');
   
-  // 使用处理后的文本替换原始文本
-  markdown = processedMarkdown;
-
-  // 移除处理行内公式的代码，让它们按原样显示
-  // 不再需要添加前导破折号
-
+  console.log('数学公式处理完成');
   console.log('Markdown预处理完成', markdown);
   return markdown;
 }
