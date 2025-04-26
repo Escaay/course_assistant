@@ -532,16 +532,32 @@ function preprocessMarkdown(markdown) {
   });
 
   console.log('开始处理数学公式...');
-  // 处理数学公式，确保它们能正确显示
-  // markmap通常支持基本的LaTeX语法，但可能需要调整格式
+  // 处理多行数学公式，保留原始环境设置
   markdown = markdown.replace(/\$\$([\s\S]*?)\$\$/g, (match, formula) => {
-    return `**数学公式**: \`${formula.trim()}\``;
+    // 保留原始公式格式，只是确保行以破折号开头
+    return `- $${formula.trim()}$\n`;
   });
 
-  // 处理行内公式
-  markdown = markdown.replace(/\$([^\$\n]+?)\$/g, (match, formula) => {
-    return `\`${formula.trim()}\``;
-  });
+  // 不直接处理行内公式，避免格式破坏
+  // 只处理含有行内公式的行，确保它们在思维导图中有正确的层级
+
+  // 1. 将文本按行分割
+  const lines = markdown.split('\n');
+  // 2. 处理每一行
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    // 只处理包含行内公式且不以破折号开头的行
+    if (line.includes('$') && !line.trim().startsWith('-')) {
+      // 检查这行是否包含行内公式
+      const hasInlineMath = /\$[^\$\n]+?\$/g.test(line);
+      if (hasInlineMath) {
+        // 在行开头添加破折号和空格
+        lines[i] = `- ${line}`;
+      }
+    }
+  }
+  // 3. 重新组合文本
+  markdown = lines.join('\n');
 
   console.log('Markdown预处理完成');
   return markdown;

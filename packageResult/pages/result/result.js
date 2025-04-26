@@ -73,7 +73,7 @@ Page({
       });
       
       // 如果还没有开始生成思维导图，且有内容，则开始生成
-      if (!this.data.isGeneratingMindMap && !this.data.mindmapImage && this.data.markdownContent) {
+      if (!this.data.mindmapImage && !this.data.isGeneratingMindMap && this.data.markdownContent) {
         this.generateMindMap(this.data.markdownContent);
       }
     }
@@ -408,8 +408,8 @@ Page({
           });
           clearInterval(this.pollingTimer);
           
-          // 流式接收完成后，立即生成思维导图
-          if (latestContent) {
+          // 只有当没有生成过且不在生成过程中时才生成
+          if (latestContent && !this.data.mindmapImage && !this.data.isGeneratingMindMap) {
             console.log('流式接收完成，立即生成思维导图');
             wx.showToast({
               title: '开始生成思维导图...',
