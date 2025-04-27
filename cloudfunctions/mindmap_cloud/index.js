@@ -140,7 +140,6 @@ app.post('/generate-mindmap', async (req, res) => {
             if (typeof markmap === 'undefined') {
               throw new Error('Markmap library not loaded');
             }
-
             const mm = markmap.Markmap.create('#markmap', {
               autoFit: true,
               duration: 0,
@@ -445,6 +444,18 @@ function getNodeDepth(node) {
 // 预处理Markdown函数
 function preprocessMarkdown(markdown) {
   console.log('开始预处理Markdown...');
+  
+  // 处理数学公式块，确保标题和公式之间有换行
+  markdown = markdown.replace(/(?:^|\n)(#+[^\n]+)(?:\n)?(\$\$\n[^\n]+\n\$\$)/g, (match, title, formula) => {
+    // 确保标题和公式之间有一个空行
+    return `${title}\n\n${formula}`;
+  });
+
+  // 处理数学公式块，但只处理那些还没有前缀的公式
+  markdown = markdown.replace(/(?:^|\n)(?!-\s*\$\$)\$\$\n([^\n]+)\n\$\$/g, (match, formula) => {
+    return `\n- $$\n  ${formula.trim()}\n  $$\n`;
+  });
+
   // 处理yuml代码块
   markdown = markdown.replace(/```yuml[\s\S]*?```/g, (match) => {
     try {

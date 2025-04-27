@@ -248,6 +248,13 @@ Page({
       const line = lines[i].trimRight();
       const trimmedLine = line.trim();
       
+      // 处理特殊字符，确保只转义一次
+      if (!inSpecialBlock && trimmedLine.includes('\\uparrow')) {
+        // 保持 \uparrow 不变，直接添加到输出中
+        processedContent += line + '\n';
+        continue;
+      }
+      
       // 检查是否是特殊代码块的开始
       if (trimmedLine.startsWith('```markdown')) {
         inSpecialBlock = true;
@@ -288,22 +295,8 @@ Page({
         }
         continue;
       } else if (trimmedLine.includes('$') && !inSpecialBlock) {
-        // 处理单行数学公式
-        let processedLine = line;
-        const matches = trimmedLine.match(/\$[^\$]+\$/g);
-        if (matches) {
-          matches.forEach(match => {
-            // 检查是否是有效的行内公式（前后都是$，且不是$$，且不包含HTML标签）
-            if (match.startsWith('$') && 
-                match.endsWith('$') && 
-                !match.startsWith('$$')) {
-              processedLine += `${match}\n`
-            } else {
-              console.log('无效的行内数学公式格式:', match);
-            }
-          });
-        }
-        processedContent += processedLine + '\n';
+        // 处理单行数学公式 - 直接使用原始行，不做额外处理
+        processedContent += line + '\n';
         continue;
       }
       
