@@ -4,6 +4,10 @@ const { Transformer } = require('markmap-lib');
 const puppeteer = require('puppeteer-core');
 const chromium = require('@sparticuz/chromium');
 const fs = require('fs');
+const path = require('path');
+
+// 在文件顶部添加本地 markmap-view 的引入
+const markmapViewScript = fs.readFileSync(path.join(__dirname, './markmap-view.js'), 'utf8');
 
 // 创建 Express 应用
 const app = express();
@@ -56,7 +60,7 @@ app.post('/generate-mindmap', async (req, res) => {
     
     console.log('开始构建HTML...');
     
-    // 简化HTML，减少外部依赖，添加调试信息
+    // 修改 HTML 模板部分
     const html = `
     <!DOCTYPE html>
     <html>
@@ -119,19 +123,7 @@ app.post('/generate-mindmap', async (req, res) => {
         // 存储根数据
         window.rootData = ${JSON.stringify(root)};
         
-        // 安全加载脚本
-        function loadScript(url) {
-          return new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = url;
-            script.async = false;
-            script.onload = resolve;
-            script.onerror = reject;
-            document.head.appendChild(script);
-          });
-        }
-
-        // 按顺序加载脚本并创建markmap
+        // 加载 D3
         async function initializeMarkmap() {
           const debug = document.getElementById('debug');
           try {
@@ -139,7 +131,10 @@ app.post('/generate-mindmap', async (req, res) => {
             await loadScript('https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js');
             
             debug.innerText = 'Debug: Loading Markmap...';
-            await loadScript('https://cdn.jsdelivr.net/npm/markmap-view@0.18.8/dist/browser/index.min.js');
+            // 直接注入本地的 markmap-view 脚本
+            const script = document.createElement('script');
+            script.textContent = ${JSON.stringify(markmapViewScript)};
+            document.head.appendChild(script);
             
             debug.innerText = 'Debug: Creating Markmap...';
             if (typeof markmap === 'undefined') {
@@ -158,6 +153,18 @@ app.post('/generate-mindmap', async (req, res) => {
             debug.innerText = 'Debug: Error: ' + error.message;
             throw error;
           }
+        }
+
+        // 安全加载脚本
+        function loadScript(url) {
+          return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = url;
+            script.async = false;
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+          });
         }
 
         // 开始初始化
@@ -441,18 +448,15 @@ function preprocessMarkdown(markdown) {
   // 处理yuml代码块
   markdown = markdown.replace(/```yuml[\s\S]*?```/g, (match) => {
     try {
-      // 提取yuml内容，处理可能的空格和格式问题
       const yumlContent = match
-        .replace(/```yuml\s*/i, '') // 移除开头的```yuml及其后的空白
-        .replace(/\s*```$/i, '')    // 移除结尾的```及其前的空白
-        .trim();                    // 去除首尾空白
+        .replace(/```yuml\s*/i, '')
+        .replace(/\s*```$/i, '')
+        .trim();
       
-      // 将yuml转换为文本描述
       return '**流程图描述**:\n- ' + yumlContent
         .split('\n')
         .filter(line => !line.startsWith('//') && line.trim() !== '')
         .map(line => {
-          // 简单处理yuml语法，提取关系
           const parts = line.match(/\[(.*?)\]\s*(-+>)\s*\[(.*?)\]/);
           if (parts) {
             return `${parts[1]} 到 ${parts[3]}`;
@@ -462,44 +466,35 @@ function preprocessMarkdown(markdown) {
         .join('\n- ');
     } catch (e) {
       console.error('处理yuml代码块时出错:', e);
-      console.error('问题代码块:', match);
       return '**流程图描述**: (解析错误，无法显示)';
     }
   });
 
-  console.log('开始处理echarts代码块...');
   // 处理echarts代码块
   markdown = markdown.replace(/```echarts[\s\S]*?```/g, (match) => {
     try {
-      // 提取echarts JSON内容，处理可能的空格和格式问题
       const jsonStr = match
-        .replace(/```echarts\s*/i, '') // 移除开头的```echarts及其后的空白
-        .replace(/\s*```$/i, '')       // 移除结尾的```及其前的空白
-        .trim();                       // 去除首尾空白
-      
-      console.log('尝试解析的JSON字符串:', jsonStr);
+        .replace(/```echarts\s*/i, '')
+        .replace(/\s*```$/i, '')
+        .trim();
       
       const chartData = JSON.parse(jsonStr);
-      
       let result = '**图表数据**:\n';
       
-      // 处理饼图
-      if (chartData.series && chartData.series[0] && chartData.series[0].type === 'pie') {
+      if (chartData.series?.[0]?.type === 'pie') {
         result += `- 图表标题: ${chartData.title?.text || '未命名'}\n`;
         if (chartData.title?.subtext) {
           result += `- 副标题: ${chartData.title.subtext}\n`;
         }
         result += '- 数据项:\n';
-        
         chartData.series[0].data.forEach(item => {
           result += `  - ${item.name}: ${item.value}\n`;
         });
       }
-      // 处理柱状图
-      else if (chartData.series && chartData.series[0] && chartData.series[0].type === 'bar') {
+      else if (chartData.series?.[0]?.type === 'bar') {
         result += `- 图表类型: 柱状图\n`;
         result += `- 图表标题: ${chartData.title?.text || '未命名'}\n`;
-        if (chartData.xAxis && chartData.xAxis.data) {
+        if (chartData.xAxis?.data) {
           result += '- 数据项:\n';
           chartData.xAxis.data.forEach((category, index) => {
             const value = chartData.series[0].data[index] || '无数据';
@@ -507,7 +502,6 @@ function preprocessMarkdown(markdown) {
           });
         }
       }
-      // 其他类型图表的通用处理
       else {
         result += `- 图表类型: ${chartData.series?.[0]?.type || '未知'}\n`;
         result += `- 图表标题: ${chartData.title?.text || '未命名'}\n`;
@@ -517,86 +511,11 @@ function preprocessMarkdown(markdown) {
       return result;
     } catch (e) {
       console.error('处理echarts代码块时出错:', e);
-      console.error('问题代码块:', match);
-      
-      // 尝试简单显示，避免完全失败
-      return '**图表数据**:\n- 解析错误，无法显示详细内容\n- 原始代码已保留';
+      return '**图表数据**:\n- 解析错误，无法显示详细内容\n';
     }
   });
 
-  // 处理数学公式
-  console.log('开始处理数学公式...');
-  
-  // 拆分Markdown为行
-  const lines = markdown.split('\n');
-  let processedLines = [];
-  
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    console.log(`处理行 ${i}: ${line.substring(0, 30)}...`);
-    
-    // 检查是否是数学公式开始
-    if (line.trim().startsWith('$$')) {
-      console.log(`发现数学公式开始: 行 ${i}`);
-      // 找到公式结束的行
-      let endIndex = -1;
-      let formulaContent = line.trim().substring(2); // 去掉开头的$$
-      
-      for (let j = i + 1; j < lines.length; j++) {
-        if (lines[j].trim().endsWith('$$')) {
-          endIndex = j;
-          console.log(`找到数学公式结束: 行 ${j}`);
-          // 添加最后一行，但去掉结尾的$$
-          formulaContent += ' ' + lines[j].trim().substring(0, lines[j].trim().length - 2);
-          break;
-        } else {
-          // 添加中间行
-          formulaContent += ' ' + lines[j].trim();
-        }
-      }
-      
-      if (endIndex !== -1) {
-        // 处理公式内容，将多行合并为一行，并清理多余空格
-        formulaContent = formulaContent.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
-        console.log(`提取的公式内容: ${formulaContent}`);
-        
-        // 检查前一行是否包含**
-        const prevLine = i > 0 ? lines[i - 1].trim() : '';
-        console.log(`数学公式前一行: "${prevLine}"`);
-        
-        if (prevLine.includes('**')) {
-          // 如果前一行有标题，则将公式作为行内公式添加到前一行后面
-          // 保留前面所有内容，直到前一行
-          processedLines.pop(); // 移除前一行，我们将修改它
-          const inlineFormula = `${prevLine} $${formulaContent}$`;
-          console.log(`添加到标题后: "${inlineFormula.substring(0, 50)}..."`);
-          processedLines.push(inlineFormula);
-        } else {
-          // 如果前一行没有标题，则添加列表项标记和行内公式
-          const inlineFormula = `- $${formulaContent}$`;
-          console.log(`添加列表项和公式: "${inlineFormula.substring(0, 50)}..."`);
-          processedLines.push(inlineFormula);
-        }
-        
-        // 更新索引
-        i = endIndex;
-        console.log(`已处理数学公式，更新索引至 ${i}`);
-      } else {
-        // 如果没有找到结束符号，添加当前行并继续
-        console.log(`未找到数学公式结束，添加当前行并继续`);
-        processedLines.push(line);
-      }
-    } else {
-      // 对于非公式行，直接添加
-      processedLines.push(line);
-    }
-  }
-  
-  // 重新组合Markdown
-  markdown = processedLines.join('\n');
-  
-  console.log('数学公式处理完成');
-  console.log('Markdown预处理完成', markdown);
+  console.log('Markdown预处理完成');
   return markdown;
 }
 
